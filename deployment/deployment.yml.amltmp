@@ -1,0 +1,72 @@
+# ================================================================
+# Azure ML Managed Online Deployment Configuration
+#
+# This file defines a deployment for a managed online endpoint in
+# Azure Machine Learning. The deployment specifies:
+#
+#   - the registered model to serve
+#   - the scoring script used for inference
+#   - the container environment used to run the model
+#   - the compute resources allocated for the deployment
+#
+# The deployment is associated with an existing endpoint and will
+# handle inference requests routed to this deployment instance.
+# ================================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+
+# Name of this deployment
+#   - Multiple deployments can exist under a single endpoint
+#   - Often used for blue/green deployments
+name: blue
+
+# Name of the endpoint this deployment belongs to
+#   - Ensure this matches the endpoint created in endpoint.yml
+endpoint_name: roger-iris-endpoint-03
+
+# Model to deploy from the Azure ML registry
+# Format:
+#   azureml:<registered_model_name>:<version>
+model: azureml:simple_iris_rf_model:1
+
+# ------------------------------------------------
+# Code configuration
+# ------------------------------------------------
+# Specifies where Azure ML should find the scoring
+# script used for inference.
+code_configuration:
+  # Directory containing the scoring script and any
+  # supporting code modules required for inference
+  code: ../src
+
+  # Entry point for the inference container
+  # Azure ML calls:
+  #   init() once when the container starts
+  #   run() for every request
+  scoring_script: score.py
+
+# ------------------------------------------------
+# Environment configuration
+# ------------------------------------------------
+# Defines the container image and Conda environment
+# used by the inference server.
+environment:
+  # Base Docker image provided by Azure ML
+  #   - Pin a specific tag instead of using 'latest'
+  #   - This improves deployment reproducibility
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+
+  # Conda environment definition for Python dependencies
+  conda_file: ./conda.yml
+
+# ------------------------------------------------
+# Compute configuration
+# ------------------------------------------------
+
+# Virtual machine size used for the deployment
+# Standard_DS1_v2 is commonly used for small demo models
+instance_type: Standard_DS1_v2
+
+# Number of container instances serving the model
+# Increasing this improves throughput and availability
+instance_count: 1

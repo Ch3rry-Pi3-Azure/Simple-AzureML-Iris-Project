@@ -1,0 +1,43 @@
+# ================================================================
+# Inference environment for the Iris MLflow model deployment
+#
+# This Conda environment is used by Azure Machine Learning when
+# building the inference container for the managed online endpoint.
+#
+# The environment provides:
+#   - Python runtime
+#   - Azure ML HTTP inference server
+#   - MLflow model loading support
+#   - scikit-learn model dependencies
+#   - tabular data processing libraries
+#
+# Package versions are pinned where practical to improve
+# reproducibility and reduce deployment drift.
+# ================================================================
+
+name: inference_env
+
+channels:
+  # Default Conda channel for base dependencies
+  - defaults
+
+dependencies:
+  # Python runtime used in the inference container
+  - python=3.10
+
+  # Required to install pip-managed packages
+  - pip
+
+  - pip:
+      # Azure ML inference HTTP server
+      - azureml-inference-server-http
+
+      # MLflow runtime for loading saved models
+      - mlflow==2.16.2
+
+      # Model dependency used during training and inference
+      - scikit-learn==1.5.1
+
+      # Data processing libraries used by the scoring script
+      - pandas==2.2.2
+      - numpy==1.26.4

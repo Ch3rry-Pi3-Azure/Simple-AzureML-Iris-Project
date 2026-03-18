@@ -1,0 +1,41 @@
+# ================================================================
+# Azure ML Managed Online Endpoint Configuration
+#
+# This file defines a managed online endpoint in Azure Machine
+# Learning. The endpoint acts as a stable REST API interface that
+# clients can call to obtain predictions from deployed models.
+#
+# Deployments (for example "blue" or "green") are attached to the
+# endpoint and serve inference requests routed through it.
+#
+# Typical workflow:
+#   1. Create endpoint (this file)
+#   2. Attach deployments (deployment YAML files)
+#   3. Send inference requests to the endpoint URL
+# ================================================================
+
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+
+# Name of the endpoint
+#   - Must be unique within the Azure region
+#   - This name must match the deployment file's endpoint_name
+#   - This name becomes part of the public scoring URL
+name: roger-iris-endpoint-01
+
+# Authentication mode used to access the endpoint
+#
+# Supported values include:
+#   key
+#   aml_token
+#   aad_token
+#
+# For a simple demo or internal test deployment, key-based
+# authentication is a common choice.
+auth_mode: key
+
+# Optional metadata for organisation and discoverability
+# description: Iris classification demo endpoint
+#
+# tags:
+#   project: iris-demo
+#   environment: development

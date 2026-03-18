@@ -1,0 +1,12 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: blue
+endpoint_name: iris-endpoint
+model: azureml:simple_iris_rf_model:1
+code_configuration:
+  code: ./src
+  scoring_script: score.py
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: ../outputs/iris_mlflow_model/conda.yaml
+instance_type: Standard_DS3_v2
+instance_count: 1

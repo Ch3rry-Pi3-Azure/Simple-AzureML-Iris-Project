@@ -1,0 +1,11 @@
+name: iris-inference-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - mlflow==2.16.2
+      - scikit-learn==1.5.1
+      - pandas
+      - numpy
