@@ -10,7 +10,8 @@
 #   2. sets up Python
 #   3. installs project dependencies
 #   4. installs the pytest test runner
-#   5. runs the test suite
+#   5. sets the project root on the Python path
+#   6. runs the test suite
 #
 # This provides a basic CI safety net so that small issues are
 # caught automatically before or after code is merged.
@@ -31,6 +32,11 @@ jobs:
   test:
     # Use the latest Ubuntu runner provided by GitHub Actions
     runs-on: ubuntu-latest
+
+    # Expose the repository root to Python so imports such as
+    # `from src.data import load_data` work correctly in tests
+    env:
+      PYTHONPATH: .
 
     steps:
       # Check out the repository contents so the workflow can access code
