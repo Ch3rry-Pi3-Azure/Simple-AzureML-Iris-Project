@@ -480,11 +480,9 @@ Monitoring is wired through:
 4. `monitoring/endpoint_monitor.yml`
    defines a recurring Azure ML monitor schedule
 
-The current monitor covers:
+The checked-in schedule uses the minimal out-of-box Azure ML monitor shape.
 
-- input data drift on `model_inputs`
-- input data quality on `model_inputs`
-- prediction drift on `model_outputs`
+That means Azure ML creates the default basic monitor against the collected endpoint data first, which is a safer starting point than a fully custom signal definition when CLI support varies by environment.
 
 Deploy the endpoint with monitoring support:
 
@@ -525,9 +523,10 @@ Delete the monitor schedule:
 
 Notes:
 
-- drift signals are only useful after the endpoint has seen production traffic
+- drift and quality signals are only useful after the endpoint has seen production traffic
 - this does not replace endpoint health checks or container logs
 - this is not yet ground-truth performance monitoring
+- once monitor creation is stable in your workspace, the schedule can be expanded later with explicit custom signals and thresholds
 
 </details>
 
