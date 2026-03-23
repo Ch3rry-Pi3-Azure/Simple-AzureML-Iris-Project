@@ -16,7 +16,7 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LOCAL_DATA_PATH = PROJECT_ROOT / "data" / "iris.csv"
 
 FEATURE_RENAME_MAP = {

@@ -70,10 +70,10 @@ environment:
 # ------------------------------------------------
 # Command
 # ------------------------------------------------
-# The component entry point is `pipeline_evaluate.py` located in the
-# `src/` directory referenced above.
+# The component entry point is the `pipeline.evaluate` module located
+# under the `src/pipeline/` package.
 command: >-
-  python pipeline_evaluate.py
+  python -m pipeline.evaluate
   --model-input ${{inputs.model_input}}
   --evaluation-output ${{outputs.evaluation_output}}
   $[[--data-input ${{inputs.data_input}}]]

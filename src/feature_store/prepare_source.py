@@ -30,22 +30,22 @@ import tempfile
 from typing import Any
 
 try:
-    from .data import DEFAULT_LOCAL_DATA_PATH, load_dataset_frame
-    from .feature_store import (
+    from ..core.data import DEFAULT_LOCAL_DATA_PATH, load_dataset_frame
+    from .helpers import (
         build_abfss_uri,
         build_feature_source_dataframe,
         write_feature_store_scaffold,
     )
 except ImportError:
-    from data import DEFAULT_LOCAL_DATA_PATH, load_dataset_frame
-    from feature_store import (
+    from core.data import DEFAULT_LOCAL_DATA_PATH, load_dataset_frame
+    from feature_store.helpers import (
         build_abfss_uri,
         build_feature_source_dataframe,
         write_feature_store_scaffold,
     )
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs" / "feature_store"
 DEFAULT_SCAFFOLD_DIR = PROJECT_ROOT / "featurestore" / "iris_demo"
 
@@ -246,7 +246,7 @@ def _download_source_data_asset(
     if not parsed_path:
         raise RuntimeError(
             "Only azureml://datastores/.../paths/... data assets are supported by "
-            "prepare_feature_store_source.py"
+            "src.feature_store.prepare_source"
         )
 
     datastore_name, relative_path = parsed_path

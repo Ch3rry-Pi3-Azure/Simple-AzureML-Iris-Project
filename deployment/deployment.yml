@@ -43,7 +43,7 @@ code_configuration:
   # Azure ML calls:
   #   init() once when the container starts
   #   run() for every request
-  scoring_script: score.py
+  scoring_script: serving/score.py
 
 # ------------------------------------------------
 # Environment configuration

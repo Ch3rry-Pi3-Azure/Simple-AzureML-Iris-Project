@@ -1,7 +1,12 @@
 """
 Source package for the Azure ML Iris demo project.
 
-The modules in this package cover local training, Azure ML pipeline
-execution, model registration, inference, and plotting utilities for
-the Iris classification example.
+The subpackages in this package cover:
+
+- core modelling and evaluation utilities
+- local developer entry points
+- Azure ML pipeline entry points
+- model registry helpers
+- online serving code
+- feature store preparation helpers
 """

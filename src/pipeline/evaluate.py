@@ -18,7 +18,7 @@ import mlflow.sklearn
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
-    from .artifact_names import (
+    from ..core.artifact_names import (
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
         CLASSIFICATION_REPORT_TXT,
@@ -27,15 +27,15 @@ try:
         METRICS_JSON,
         ROC_CURVE_PNG,
     )
-    from .data import load_data
-    from .evaluate import evaluate_model
-    from .visualize import (
+    from ..core.data import load_data
+    from ..core.evaluate import evaluate_model
+    from ..core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
         save_multiclass_roc_curve,
     )
 except ImportError:
-    from artifact_names import (
+    from core.artifact_names import (
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
         CLASSIFICATION_REPORT_TXT,
@@ -44,9 +44,9 @@ except ImportError:
         METRICS_JSON,
         ROC_CURVE_PNG,
     )
-    from data import load_data
-    from evaluate import evaluate_model
-    from visualize import (
+    from core.data import load_data
+    from core.evaluate import evaluate_model
+    from core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
         save_multiclass_roc_curve,

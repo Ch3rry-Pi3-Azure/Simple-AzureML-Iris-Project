@@ -7,8 +7,8 @@ expected output structure after scoring a trained classifier.
 
 from sklearn.ensemble import RandomForestClassifier
 
-from src.data import load_data
-from src.evaluate import evaluate_model
+from src.core.data import load_data
+from src.core.evaluate import evaluate_model
 
 
 def test_evaluate_model_returns_expected_keys() -> None:

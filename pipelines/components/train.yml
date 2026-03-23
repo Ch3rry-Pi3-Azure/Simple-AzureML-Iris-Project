@@ -76,10 +76,10 @@ environment:
 # ------------------------------------------------
 # Command
 # ------------------------------------------------
-# The component entry point is `pipeline_train.py` located in the
-# `src/` directory referenced above.
+# The component entry point is the `pipeline.train` module located
+# under the `src/pipeline/` package.
 command: >-
-  python pipeline_train.py
+  python -m pipeline.train
   --model-output ${{outputs.model_output}}
   --metrics-output ${{outputs.metrics_output}}
   $[[--data-input ${{inputs.data_input}}]]

@@ -49,7 +49,7 @@ At inference time, Azure ML:
 1. provisions the managed online endpoint and deployment
 2. builds the inference environment from `deployment/conda.yml`
 3. mounts the registered MLflow model inside the container
-4. calls `src/score.py` to load the model and serve predictions
+4. calls `src/serving/score.py` to load the model and serve predictions
 5. collects production input/output data for monitoring
 
 </details>
@@ -96,6 +96,8 @@ Azure-AML-Iris/
 |   |   |-- create-monitor.sh
 |   |   |-- delete-monitor.sh
 |   |   `-- status.sh
+|   |-- feature-store/
+|   |   `-- prepare-source.sh
 |   `-- pipeline/
 |       |-- download-outputs.sh
 |       |-- register-components.sh
@@ -107,20 +109,32 @@ Azure-AML-Iris/
 |   `-- iris_data.yml
 |-- src/
 |   |-- __init__.py
-|   |-- artifact_names.py
-|   |-- data.py
-|   |-- debug_artifacts.py
-|   |-- evaluate.py
-|   |-- feature_store.py
-|   |-- modeling.py
-|   |-- pipeline_evaluate.py
-|   |-- pipeline_train.py
-|   |-- prepare_feature_store_source.py
-|   |-- predict.py
-|   |-- register.py
-|   |-- score.py
-|   |-- train.py
-|   `-- visualize.py
+|   |-- core/
+|   |   |-- __init__.py
+|   |   |-- artifact_names.py
+|   |   |-- data.py
+|   |   |-- evaluate.py
+|   |   |-- modeling.py
+|   |   `-- visualize.py
+|   |-- feature_store/
+|   |   |-- __init__.py
+|   |   |-- helpers.py
+|   |   `-- prepare_source.py
+|   |-- local/
+|   |   |-- __init__.py
+|   |   |-- debug_artifacts.py
+|   |   |-- predict.py
+|   |   `-- train.py
+|   |-- pipeline/
+|   |   |-- __init__.py
+|   |   |-- evaluate.py
+|   |   `-- train.py
+|   |-- registry/
+|   |   |-- __init__.py
+|   |   `-- register.py
+|   `-- serving/
+|       |-- __init__.py
+|       `-- score.py
 |-- tests/
 |   |-- test_data.py
 |   |-- test_evaluate.py
@@ -133,15 +147,15 @@ Azure-AML-Iris/
 
 Core files:
 
-- `src/train.py`
+- `src/local/train.py`
   local training entry point; saves the deployable MLflow model and local run artifacts
-- `src/modeling.py`
+- `src/core/modeling.py`
   shared GridSearchCV logic used by both local and pipeline training
-- `src/evaluate.py`
+- `src/core/evaluate.py`
   shared evaluation helpers for metrics, reports, and plots
-- `src/score.py`
+- `src/serving/score.py`
   Azure ML inference entry point with production data collection for monitoring
-- `src/prepare_feature_store_source.py`
+- `src/feature_store/prepare_source.py`
   CLI helper that derives a feature-store-ready source dataset from the Azure ML data asset or local fallback data
 - `pipelines/train_evaluate.yml`
   Azure ML pipeline job that chains training and evaluation
@@ -316,7 +330,7 @@ pip install -r requirements.txt
 Train locally:
 
 ```bash
-python -m src.train
+python -m src.local.train
 ```
 
 This:
@@ -346,13 +360,13 @@ Local artifact examples:
 Local prediction check:
 
 ```bash
-python -m src.predict
+python -m src.local.predict
 ```
 
 Register the locally saved model:
 
 ```bash
-python -m src.register
+python -m src.registry.register
 ```
 
 The registered model name is:
@@ -488,8 +502,8 @@ az ml data show --name $DATA_ASSET --version 1
 
 Notes:
 
-- `src/data.py` now supports a pragmatic fallback chain: use an explicit CSV path when provided, otherwise use `data/iris.csv` when present, otherwise fall back to `sklearn.datasets.load_iris()`.
-- The datastore and data asset are the storage and cataloguing layer. They do not automatically change online inference in `src/score.py`.
+- `src/core/data.py` now supports a pragmatic fallback chain: use an explicit CSV path when provided, otherwise use `data/iris.csv` when present, otherwise fall back to `sklearn.datasets.load_iris()`.
+- The datastore and data asset are the storage and cataloguing layer. They do not automatically change online inference in `src/serving/score.py`.
 - The Azure ML pipeline definitions now accept an optional `data_input` so training and evaluation can consume the registered data asset without breaking the fallback path.
 
 </details>
@@ -515,13 +529,14 @@ The helper script:
 Run it with defaults:
 
 ```bash
-python -m src.prepare_feature_store_source
+python -m src.feature_store.prepare_source
+./scripts/feature-store/prepare-source.sh
 ```
 
 Useful overrides:
 
 ```bash
-python -m src.prepare_feature_store_source \
+python -m src.feature_store.prepare_source \
   --source-data-asset-name iris_csv \
   --source-data-asset-version 1 \
   --datastore-name iris_adls_ds \
@@ -726,7 +741,7 @@ Monitoring is wired through:
    enables `data_collector` for `model_inputs` and `model_outputs`
 2. `deployment/conda.yml`
    installs `azureml-ai-monitoring`
-3. `src/score.py`
+3. `src/serving/score.py`
    logs pandas DataFrames for model inputs and model outputs
 4. `monitoring/endpoint_monitor.yml`
    defines a recurring Azure ML monitor schedule

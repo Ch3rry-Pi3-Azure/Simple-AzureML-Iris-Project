@@ -17,7 +17,7 @@ import mlflow.pyfunc
 # Determine the root directory of the project
 #   - This allows the script to locate the saved model
 #     regardless of where it is executed from
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # Path to the locally saved MLflow model
 MODEL_DIR = PROJECT_ROOT / "outputs" / "iris_mlflow_model"

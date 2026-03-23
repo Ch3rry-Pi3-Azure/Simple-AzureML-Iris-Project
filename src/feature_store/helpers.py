@@ -26,9 +26,9 @@ from pathlib import Path
 import pandas as pd
 
 try:
-    from .data import FEATURE_COLUMNS
+    from ..core.data import FEATURE_COLUMNS
 except ImportError:
-    from data import FEATURE_COLUMNS
+    from core.data import FEATURE_COLUMNS
 
 
 # Canonical column order used by the derived feature-source dataset.

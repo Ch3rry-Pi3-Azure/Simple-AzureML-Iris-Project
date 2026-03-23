@@ -7,7 +7,7 @@ non-empty train and test splits in the expected structure.
 
 from pathlib import Path
 
-from src.data import load_data, load_dataset_frame
+from src.core.data import load_data, load_dataset_frame
 
 
 def test_load_data_returns_non_empty_splits() -> None:

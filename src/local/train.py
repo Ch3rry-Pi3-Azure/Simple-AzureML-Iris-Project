@@ -24,7 +24,7 @@ from mlflow.models import infer_signature
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
-    from .artifact_names import (
+    from ..core.artifact_names import (
         BEST_PARAMS_JSON,
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
@@ -38,10 +38,10 @@ try:
         OOB_ERROR_CURVE_PNG,
         ROC_CURVE_PNG,
     )
-    from .data import load_data
-    from .evaluate import evaluate_model
-    from .modeling import run_grid_search
-    from .visualize import (
+    from ..core.data import load_data
+    from ..core.evaluate import evaluate_model
+    from ..core.modeling import run_grid_search
+    from ..core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
         save_learning_curve_plot,
@@ -49,7 +49,7 @@ try:
         save_multiclass_roc_curve,
     )
 except ImportError:
-    from artifact_names import (
+    from core.artifact_names import (
         BEST_PARAMS_JSON,
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
@@ -63,10 +63,10 @@ except ImportError:
         OOB_ERROR_CURVE_PNG,
         ROC_CURVE_PNG,
     )
-    from data import load_data
-    from evaluate import evaluate_model
-    from modeling import run_grid_search
-    from visualize import (
+    from core.data import load_data
+    from core.evaluate import evaluate_model
+    from core.modeling import run_grid_search
+    from core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
         save_learning_curve_plot,
