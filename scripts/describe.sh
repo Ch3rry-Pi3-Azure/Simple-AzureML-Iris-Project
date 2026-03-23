@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENDPOINT="roger-iris-endpoint-01"
+ENDPOINT_NAME="${ENDPOINT_NAME:-roger-iris-endpoint-01}"
 
 az ml online-endpoint show \
-  --name $ENDPOINT
+  --name "$ENDPOINT_NAME"

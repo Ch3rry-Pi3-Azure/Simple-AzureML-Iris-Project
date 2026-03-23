@@ -10,6 +10,11 @@ calls:
 
 The script loads the deployed MLflow model from the Azure ML
 model directory and performs predictions on incoming JSON data.
+
+The request payload accepts either:
+
+    1. a list of feature lists
+    2. a list of objects keyed by feature name
 """
 
 from __future__ import annotations
@@ -109,12 +114,25 @@ def run(raw_data: str) -> dict:
     raw_data : str
         JSON string containing the request payload.
 
-        Expected format:
+        Accepted formats:
 
         {
             "data": [
                 [5.1, 3.5, 1.4, 0.2],
                 [6.2, 3.4, 5.4, 2.3]
+            ]
+        }
+
+        or
+
+        {
+            "data": [
+                {
+                    "sepal length (cm)": 5.1,
+                    "sepal width (cm)": 3.5,
+                    "petal length (cm)": 1.4,
+                    "petal width (cm)": 0.2
+                }
             ]
         }
 
@@ -140,8 +158,13 @@ def run(raw_data: str) -> dict:
     - The function validates the request structure before
       attempting inference.
 
-    - Input rows must contain exactly four feature values,
-      matching the schema used during training.
+        - Input rows must either be all lists or all objects.
+
+        - List-based rows must contain exactly four feature values,
+          matching the schema used during training.
+
+        - Object-based rows must contain exactly the expected
+          feature names used during training.
 
     - The input data is converted into a pandas DataFrame with
       explicit column names so that the inference schema matches
@@ -176,17 +199,52 @@ def run(raw_data: str) -> dict:
         if len(rows) == 0:
             raise ValueError("The 'data' field must not be empty.")
 
-        if any(not isinstance(row, list) for row in rows):
-            raise ValueError("Each entry in 'data' must be a list of feature values.")
+        # Accept two request shapes:
+        #   1. rows as ordered feature lists
+        #   2. rows as objects keyed by feature name
+        if all(isinstance(row, list) for row in rows):
+            if any(len(row) != len(FEATURE_COLUMNS) for row in rows):
+                raise ValueError(
+                    f"Each input row must contain exactly {len(FEATURE_COLUMNS)} values."
+                )
 
-        if any(len(row) != len(FEATURE_COLUMNS) for row in rows):
+            df = pd.DataFrame(rows, columns=FEATURE_COLUMNS)
+
+        elif all(isinstance(row, dict) for row in rows):
+            missing_columns = [
+                [
+                    column
+                    for column in FEATURE_COLUMNS
+                    if column not in row
+                ]
+                for row in rows
+            ]
+            extra_columns = [
+                [
+                    column
+                    for column in row.keys()
+                    if column not in FEATURE_COLUMNS
+                ]
+                for row in rows
+            ]
+
+            if any(missing for missing in missing_columns):
+                raise ValueError(
+                    "Each object row must contain all required feature names."
+                )
+
+            if any(extra for extra in extra_columns):
+                raise ValueError(
+                    "Object rows may only contain the expected feature names."
+                )
+
+            # Reorder columns explicitly to keep inference schema stable.
+            df = pd.DataFrame(rows)[FEATURE_COLUMNS]
+
+        else:
             raise ValueError(
-                f"Each input row must contain exactly {len(FEATURE_COLUMNS)} values."
+                "Each entry in 'data' must use the same format: all lists or all objects."
             )
-
-        # Convert request data into a DataFrame with explicit column names
-        #   - This keeps inference schema consistent with training
-        df = pd.DataFrame(rows, columns=FEATURE_COLUMNS)
 
         # Generate predictions
         preds = model.predict(df)

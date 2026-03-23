@@ -22,7 +22,7 @@ name: blue
 
 # Name of the endpoint this deployment belongs to
 #   - Ensure this matches the endpoint created in endpoint.yml
-endpoint_name: roger-iris-endpoint-03
+endpoint_name: roger-iris-endpoint-01
 
 # Model to deploy from the Azure ML registry
 # Format:

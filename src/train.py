@@ -21,8 +21,12 @@ from mlflow.models import infer_signature
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, precision_score, recall_score
 
-from data import load_data
-from evaluate import evaluate_model
+try:
+    from .data import load_data
+    from .evaluate import evaluate_model
+except ImportError:
+    from data import load_data
+    from evaluate import evaluate_model
 
 
 # Name of the MLflow experiment used to track runs

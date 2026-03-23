@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-RESOURCE_GROUP="your-resource-group"
-ENDPOINT_NAME="roger-iris-endpoint-01"
-DEPLOYMENT_NAME="blue"
+RESOURCE_GROUP="${RESOURCE_GROUP:-your-resource-group}"
+ENDPOINT_NAME="${ENDPOINT_NAME:-roger-iris-endpoint-01}"
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-blue}"
 AUTOSCALE_NAME="autoscale-${ENDPOINT_NAME}-${DEPLOYMENT_NAME}"
 
 echo "Getting deployment resource ID..."

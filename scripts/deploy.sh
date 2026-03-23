@@ -2,19 +2,22 @@
 
 set -e
 
-ENDPOINT_NAME="roger-iris-endpoint-01"
-DEPLOYMENT_NAME="blue"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+ENDPOINT_NAME="${ENDPOINT_NAME:-roger-iris-endpoint-01}"
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-blue}"
 
 echo "Creating endpoint..."
 
 az ml online-endpoint create \
-  --file deployment/endpoint.yml
+  --file "$PROJECT_ROOT/deployment/endpoint.yml"
 
 
 echo "Creating deployment..."
 
 az ml online-deployment create \
-  --file deployment/deployment.yml \
+  --file "$PROJECT_ROOT/deployment/deployment.yml" \
   --all-traffic
 
 
