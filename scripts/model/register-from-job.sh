@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Register the `trained_model` output from an Azure ML pipeline job as
+# a workspace model asset. If no job name is provided, the script uses
+# the latest pipeline job it can find.
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,3 +33,5 @@ az ml model create \
   --set name="$MODEL_NAME" \
   --set path="$MODEL_PATH" \
   --set tags.pipeline_job="$JOB_NAME"
+
+echo "Model registration request submitted."

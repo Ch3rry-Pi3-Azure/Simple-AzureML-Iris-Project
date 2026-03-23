@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Create or update the managed online endpoint deployment.
+# By default the script resolves and deploys the latest registered
+# version of the configured model name.
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,13 +21,14 @@ fi
 
 MODEL_REF="azureml:${MODEL_NAME}:${MODEL_VERSION}"
 
-echo "Creating endpoint..."
+echo "Using deployment name '$DEPLOYMENT_NAME' under endpoint '$ENDPOINT_NAME'."
+echo "Creating endpoint if needed..."
 
 az ml online-endpoint create \
   --file "$PROJECT_ROOT/deployment/endpoint.yml"
 
 
-echo "Creating deployment..."
+echo "Creating or updating deployment..."
 echo "Deploying model: $MODEL_REF"
 
 az ml online-deployment create \

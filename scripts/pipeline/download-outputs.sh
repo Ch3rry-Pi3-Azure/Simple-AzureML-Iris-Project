@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Download Azure ML pipeline output artifacts into the local repo under
+# a dated folder structure. By default the script resolves the latest
+# pipeline job and downloads the train/evaluate outputs.
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,17 +38,20 @@ mkdir -p "$TARGET_DIR"
 
 echo "Downloading pipeline outputs for job '$JOB_NAME' into '$TARGET_DIR'..."
 
+echo "Downloading 'train_metrics'..."
 az ml job download \
   --name "$JOB_NAME" \
   --output-name train_metrics \
   --download-path "$TARGET_DIR"
 
+echo "Downloading 'evaluation_report'..."
 az ml job download \
   --name "$JOB_NAME" \
   --output-name evaluation_report \
   --download-path "$TARGET_DIR"
 
 if [[ "$INCLUDE_MODEL_OUTPUT" == "true" ]]; then
+  echo "Downloading 'trained_model'..."
   az ml job download \
     --name "$JOB_NAME" \
     --output-name trained_model \

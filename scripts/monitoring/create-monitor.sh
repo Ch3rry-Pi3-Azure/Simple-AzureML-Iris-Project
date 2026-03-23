@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Create or update an Azure ML monitor schedule for the configured
+# endpoint deployment using the checked-in monitoring YAML.
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

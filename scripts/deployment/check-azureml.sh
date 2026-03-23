@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Run a compact Azure ML verification pass for the current workspace,
+# endpoint, deployment, and traffic configuration.
+
 set -e
 
 ENDPOINT_NAME="${ENDPOINT_NAME:-roger-iris-endpoint-01}"

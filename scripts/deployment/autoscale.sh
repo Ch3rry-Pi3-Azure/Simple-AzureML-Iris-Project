@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Configure a simple autoscale policy for the managed online deployment.
+# The script creates an autoscale setting and adds basic CPU-based
+# scale-out and scale-in rules.
+
 set -e
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-your-resource-group}"

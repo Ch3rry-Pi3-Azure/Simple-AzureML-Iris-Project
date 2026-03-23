@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Submit the Azure ML train/evaluate pipeline. By default the script
+# waits for completion and then downloads the output artifacts.
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,6 +17,7 @@ if [[ "$AUTO_DOWNLOAD_OUTPUTS" == "true" ]]; then
   WAIT_FOR_COMPLETION="true"
 fi
 
+echo "Submitting pipeline file: $PIPELINE_FILE"
 JOB_NAME="$(az ml job create --file "$PIPELINE_FILE" --query name -o tsv)"
 
 if [[ -z "$JOB_NAME" || "$JOB_NAME" == "null" ]]; then
@@ -48,5 +53,6 @@ done
 echo "Pipeline job '$JOB_NAME' completed successfully."
 
 if [[ "$AUTO_DOWNLOAD_OUTPUTS" == "true" ]]; then
+  echo "Auto-downloading pipeline outputs..."
   "$SCRIPT_DIR/download-outputs.sh" "$JOB_NAME"
 fi

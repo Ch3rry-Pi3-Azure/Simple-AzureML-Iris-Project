@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Invoke the deployed endpoint through Azure ML using the checked-in
+# sample request payload.
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,6 +11,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENDPOINT_NAME="${ENDPOINT_NAME:-roger-iris-endpoint-01}"
 DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-blue}"
 
+echo "Invoking deployment '$DEPLOYMENT_NAME' on endpoint '$ENDPOINT_NAME'..."
 az ml online-endpoint invoke \
   --name "$ENDPOINT_NAME" \
   --deployment-name "$DEPLOYMENT_NAME" \
