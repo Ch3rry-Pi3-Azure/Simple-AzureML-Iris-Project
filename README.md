@@ -29,9 +29,10 @@ This repository covers:
 - [Windows Note](#windows-note)
 - [References](#references)
 
-<a id="overview"></a>
+## Overview
+
 <details open>
-<summary><strong>Overview</strong></summary>
+<summary>Show or hide section</summary>
 
 The project trains a `RandomForestClassifier` on the Iris dataset, packages it in MLflow format, registers it in Azure ML, and deploys it to a managed online endpoint.
 
@@ -50,9 +51,10 @@ At inference time, Azure ML:
 
 </details>
 
-<a id="repository-structure"></a>
+## Repository Structure
+
 <details>
-<summary><strong>Repository Structure</strong></summary>
+<summary>Show or hide section</summary>
 
 ```text
 Azure-AML-Iris/
@@ -139,9 +141,10 @@ Core files:
 
 </details>
 
-<a id="azure-prerequisites"></a>
+## Azure Prerequisites
+
 <details>
-<summary><strong>Azure Prerequisites</strong></summary>
+<summary>Show or hide section</summary>
 
 You need:
 
@@ -176,9 +179,10 @@ az provider register --namespace Microsoft.KeyVault
 
 </details>
 
-<a id="git-and-github-setup"></a>
+## Git And GitHub Setup
+
 <details>
-<summary><strong>Git And GitHub Setup</strong></summary>
+<summary>Show or hide section</summary>
 
 This repo was connected from an existing folder rather than cloned into a fresh directory.
 
@@ -232,9 +236,10 @@ git status
 
 </details>
 
-<a id="local-workflow"></a>
+## Local Workflow
+
 <details>
-<summary><strong>Local Workflow</strong></summary>
+<summary>Show or hide section</summary>
 
 Optional virtual environment:
 
@@ -299,9 +304,10 @@ Notes on plots:
 
 </details>
 
-<a id="azure-ml-pipeline-workflow"></a>
+## Azure ML Pipeline Workflow
+
 <details>
-<summary><strong>Azure ML Pipeline Workflow</strong></summary>
+<summary>Show or hide section</summary>
 
 The repo includes a component-based Azure ML pipeline in `pipelines/train_evaluate.yml`.
 
@@ -389,9 +395,10 @@ Key MLflow metrics shown in Azure ML:
 
 </details>
 
-<a id="endpoint-deployment-and-teardown"></a>
+## Endpoint Deployment And Teardown
+
 <details>
-<summary><strong>Endpoint Deployment And Teardown</strong></summary>
+<summary>Show or hide section</summary>
 
 Default endpoint settings in this repo:
 
@@ -455,9 +462,10 @@ RESOURCE_GROUP="<YOUR_RESOURCE_GROUP>" ./scripts/deployment/autoscale.sh
 
 </details>
 
-<a id="azure-ml-monitoring"></a>
+## Azure ML Monitoring
+
 <details>
-<summary><strong>Azure ML Monitoring</strong></summary>
+<summary>Show or hide section</summary>
 
 This repo now includes a first monitoring pass for the managed online endpoint.
 
@@ -523,9 +531,10 @@ Notes:
 
 </details>
 
-<a id="endpoint-request-format"></a>
+## Endpoint Request Format
+
 <details>
-<summary><strong>Endpoint Request Format</strong></summary>
+<summary>Show or hide section</summary>
 
 The scoring script accepts either named feature objects or ordered feature lists under the top-level `data` field.
 
@@ -562,9 +571,10 @@ deployment/sample-request.json
 
 </details>
 
-<a id="verification-commands"></a>
+## Verification Commands
+
 <details>
-<summary><strong>Verification Commands</strong></summary>
+<summary>Show or hide section</summary>
 
 Azure account and defaults:
 
@@ -603,9 +613,10 @@ az ml online-endpoint show --name roger-iris-endpoint-01 --query scoring_uri -o 
 
 </details>
 
-<a id="troubleshooting-notes"></a>
+## Troubleshooting Notes
+
 <details>
-<summary><strong>Troubleshooting Notes</strong></summary>
+<summary>Show or hide section</summary>
 
 - If `az ml` commands fail because the workspace or resource group is missing, fix Azure CLI defaults first.
 - If component code changes, rerun `./scripts/pipeline/register-components.sh` before submitting the pipeline again.
@@ -618,9 +629,10 @@ az ml online-endpoint show --name roger-iris-endpoint-01 --query scoring_uri -o 
 
 </details>
 
-<a id="windows-note"></a>
+## Windows Note
+
 <details>
-<summary><strong>Windows Note</strong></summary>
+<summary>Show or hide section</summary>
 
 The operational scripts in `scripts/` are Bash scripts.
 
@@ -634,9 +646,10 @@ If needed, the underlying Azure CLI commands can still be run directly in PowerS
 
 </details>
 
-<a id="references"></a>
+## References
+
 <details>
-<summary><strong>References</strong></summary>
+<summary>Show or hide section</summary>
 
 - Azure ML CLI v2 setup  
   https://learn.microsoft.com/en-us/azure/machine-learning/how-to-configure-cli?view=azureml-api-2
