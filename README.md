@@ -173,6 +173,95 @@ Check the active Azure ML workspace:
 az ml workspace show
 ```
 
+## Git And GitHub Setup
+
+This project was connected to GitHub as an existing local folder rather than by cloning directly into a new directory.
+
+### Local Windows Folder
+
+The local project folder used for Git setup was:
+
+```text
+C:\Users\HP\OneDrive\Documents\Projects\Azure\Azure-AML-Iris
+```
+
+### Azure ML / Cloud Notebook Folder
+
+In Azure ML notebooks or compute instances, the working folder may instead look like:
+
+```text
+~/cloudfiles/code/Users/<YOUR_USERNAME>/simple_aml_project
+```
+
+Use the folder where the project files already exist before running the Git commands below.
+
+### Connect An Existing Folder To GitHub
+
+From the project root:
+
+```bash
+git init
+git remote add origin https://github.com/Ch3rry-Pi3-Azure/Simple-AzureML-Iris-Project.git
+git pull origin main
+git branch --set-upstream-to=origin/main main
+```
+
+This connects the current folder to the GitHub repository and pulls the tracked files into that folder without using `git clone`.
+
+### GitHub Authentication For This Project
+
+This project used a GitHub **classic personal access token** with HTTPS authentication.
+
+When Git prompts during `pull` or `push`:
+
+- username: your GitHub username
+- password: paste the GitHub classic personal access token
+
+### Store Credentials So Git Does Not Keep Prompting
+
+In Azure ML Linux-based terminals, a common setup is:
+
+```bash
+git config --global credential.helper store
+```
+
+That causes Git to save credentials after the first successful authentication so later `git pull` and `git push` commands do not keep asking for the token.
+
+After setting the helper, run a Git operation such as:
+
+```bash
+git pull origin main
+```
+
+Then enter:
+
+- GitHub username
+- GitHub classic PAT
+
+Git will usually store the credentials in:
+
+```text
+~/.git-credentials
+```
+
+Note that `credential.helper store` keeps credentials in plain text, so it is simple but not the most secure option.
+
+### Safe Directory Fix On Local Windows
+
+Because this repository was initialized once from a different user context, Git on Windows may report a `dubious ownership` warning.
+
+If that happens, run:
+
+```bash
+git config --global --add safe.directory C:/Users/HP/OneDrive/Documents/Projects/Azure/Azure-AML-Iris
+```
+
+Then verify Git works normally:
+
+```bash
+git status
+```
+
 ## Azure Resource Provider Checks
 
 If this subscription has not been used for Azure ML before, provider registration is often part of the initial setup.
