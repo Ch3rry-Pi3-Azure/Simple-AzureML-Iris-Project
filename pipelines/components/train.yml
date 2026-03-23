@@ -27,6 +27,11 @@ display_name: Iris Train Model
 # Inputs
 # ------------------------------------------------
 inputs:
+  # Optional Iris CSV mounted from an Azure ML data asset
+  data_input:
+    type: uri_file
+    optional: true
+
   # Random seed used by the model and search process
   model_random_state:
     type: integer
@@ -77,6 +82,7 @@ command: >-
   python pipeline_train.py
   --model-output ${{outputs.model_output}}
   --metrics-output ${{outputs.metrics_output}}
+  $[[--data-input ${{inputs.data_input}}]]
   --model-random-state ${{inputs.model_random_state}}
   --test-size ${{inputs.test_size}}
   --data-random-state ${{inputs.data_random_state}}

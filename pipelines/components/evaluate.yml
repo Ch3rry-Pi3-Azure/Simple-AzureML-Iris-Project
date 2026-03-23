@@ -30,6 +30,11 @@ inputs:
   model_input:
     type: mlflow_model
 
+  # Optional Iris CSV mounted from an Azure ML data asset
+  data_input:
+    type: uri_file
+    optional: true
+
   # Fraction of data reserved for the held-out test split
   test_size:
     type: number
@@ -71,5 +76,6 @@ command: >-
   python pipeline_evaluate.py
   --model-input ${{inputs.model_input}}
   --evaluation-output ${{outputs.evaluation_output}}
+  $[[--data-input ${{inputs.data_input}}]]
   --test-size ${{inputs.test_size}}
   --data-random-state ${{inputs.data_random_state}}

@@ -86,6 +86,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-output", required=True)
     parser.add_argument("--metrics-output", required=True)
+    parser.add_argument("--data-input", required=False, default=None)
     parser.add_argument("--model-random-state", type=int, default=5901)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--data-random-state", type=int, default=5901)
@@ -123,6 +124,7 @@ def main() -> None:
 
     # Recreate the deterministic project dataset split.
     X_train, X_test, y_train, y_test = load_data(
+        data_path=args.data_input,
         test_size=args.test_size,
         random_state=args.data_random_state,
     )
@@ -167,6 +169,7 @@ def main() -> None:
         "model_random_state": args.model_random_state,
         "test_size": args.test_size,
         "data_random_state": args.data_random_state,
+        "data_input": args.data_input or "builtin_or_default",
     }
 
     # Log summary parameters and scalar metrics so Azure ML surfaces them.
@@ -180,6 +183,7 @@ def main() -> None:
             "model_random_state": args.model_random_state,
             "test_size": args.test_size,
             "data_random_state": args.data_random_state,
+            "data_input": args.data_input or "builtin_or_default",
         }
     )
     mlflow.log_metrics(

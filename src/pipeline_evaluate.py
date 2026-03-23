@@ -67,6 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-input", required=True)
     parser.add_argument("--evaluation-output", required=True)
+    parser.add_argument("--data-input", required=False, default=None)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--data-random-state", type=int, default=5901)
     return parser.parse_args()
@@ -99,6 +100,7 @@ def main() -> None:
 
     # Recreate the deterministic test partition used across the project.
     _, X_test, _, y_test = load_data(
+        data_path=args.data_input,
         test_size=args.test_size,
         random_state=args.data_random_state,
     )
@@ -135,6 +137,7 @@ def main() -> None:
         {
             "evaluation_test_size": args.test_size,
             "evaluation_data_random_state": args.data_random_state,
+            "data_input": args.data_input or "builtin_or_default",
         }
     )
     mlflow.log_metrics(

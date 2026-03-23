@@ -22,6 +22,7 @@ This repository covers:
 - [Git And GitHub Setup](#git-and-github-setup)
 - [Local Workflow](#local-workflow)
 - [ADLS Datastore And Data Asset Setup](#adls-datastore-and-data-asset-setup)
+- [Feature Store Prep](#feature-store-prep)
 - [Azure ML Pipeline Workflow](#azure-ml-pipeline-workflow)
 - [Endpoint Deployment And Teardown](#endpoint-deployment-and-teardown)
 - [Azure ML Monitoring](#azure-ml-monitoring)
@@ -99,15 +100,22 @@ Azure-AML-Iris/
 |       |-- download-outputs.sh
 |       |-- register-components.sh
 |       `-- submit.sh
+|-- data/
+|   `-- iris.csv
+|-- infra/
+|   |-- adls_datastore.yml
+|   `-- iris_data.yml
 |-- src/
 |   |-- __init__.py
 |   |-- artifact_names.py
 |   |-- data.py
 |   |-- debug_artifacts.py
 |   |-- evaluate.py
+|   |-- feature_store.py
 |   |-- modeling.py
 |   |-- pipeline_evaluate.py
 |   |-- pipeline_train.py
+|   |-- prepare_feature_store_source.py
 |   |-- predict.py
 |   |-- register.py
 |   |-- score.py
@@ -115,7 +123,8 @@ Azure-AML-Iris/
 |   `-- visualize.py
 |-- tests/
 |   |-- test_data.py
-|   `-- test_evaluate.py
+|   |-- test_evaluate.py
+|   `-- test_feature_store.py
 |-- .amlignore
 |-- .gitignore
 |-- README.md
@@ -132,6 +141,8 @@ Core files:
   shared evaluation helpers for metrics, reports, and plots
 - `src/score.py`
   Azure ML inference entry point with production data collection for monitoring
+- `src/prepare_feature_store_source.py`
+  CLI helper that derives a feature-store-ready source dataset from the Azure ML data asset or local fallback data
 - `pipelines/train_evaluate.yml`
   Azure ML pipeline job that chains training and evaluation
 - `models/register_from_job.yml`
@@ -310,7 +321,7 @@ python -m src.train
 
 This:
 
-- loads and splits the Iris dataset
+- loads and splits the Iris dataset from `data/iris.csv` when present, otherwise falls back to `sklearn.datasets.load_iris()`
 - runs `GridSearchCV` for the Random Forest
 - refits the best estimator
 - logs MLflow metrics
@@ -477,9 +488,61 @@ az ml data show --name $DATA_ASSET --version 1
 
 Notes:
 
-- This repository does not yet read training data from an Azure ML data asset; it still loads Iris directly inside `src/data.py`.
+- `src/data.py` now supports a pragmatic fallback chain: use an explicit CSV path when provided, otherwise use `data/iris.csv` when present, otherwise fall back to `sklearn.datasets.load_iris()`.
 - The datastore and data asset are the storage and cataloguing layer. They do not automatically change online inference in `src/score.py`.
-- The next repo change after this setup is to update `src/data.py`, `src/pipeline_train.py`, `src/pipeline_evaluate.py`, and the pipeline YAML files so the training jobs consume the registered data asset.
+- The Azure ML pipeline definitions now accept an optional `data_input` so training and evaluation can consume the registered data asset without breaking the fallback path.
+
+</details>
+
+## Feature Store Prep
+
+<details>
+<summary>Show or hide section</summary>
+
+This repository now includes a pragmatic first step toward Azure ML feature store integration.
+
+The helper script:
+
+1. checks whether the Azure ML data asset `iris_csv` exists
+2. downloads the asset from the registered datastore when present
+3. falls back to `data/iris.csv` and then to `sklearn.datasets.load_iris()` if needed
+4. derives `flower_id` and `event_timestamp`
+5. writes a feature-store-friendly source CSV locally under `outputs/feature_store/`
+6. uploads that derived file back to ADLS Gen2
+7. registers a derived Azure ML data asset such as `iris_feature_source`
+8. writes feature store scaffold YAML files locally under `featurestore/iris_demo/`
+
+Run it with defaults:
+
+```bash
+python -m src.prepare_feature_store_source
+```
+
+Useful overrides:
+
+```bash
+python -m src.prepare_feature_store_source \
+  --source-data-asset-name iris_csv \
+  --source-data-asset-version 1 \
+  --datastore-name iris_adls_ds \
+  --derived-data-asset-name iris_feature_source \
+  --derived-data-asset-version auto \
+  --upload-path feature-store/source/iris_feature_source.csv
+```
+
+Generated outputs:
+
+- local derived file: `outputs/feature_store/iris_feature_source.csv`
+- derived data asset: `azureml:iris_feature_source:<VERSION>`
+- scaffold entity YAML: `featurestore/iris_demo/flower_entity.yml`
+- scaffold feature set YAML: `featurestore/iris_demo/iris_measurements.yml`
+- scaffold feature set spec: `featurestore/iris_demo/spec/FeatureSetSpec.yaml`
+
+Important scope note:
+
+- The script prepares the source data and scaffold files needed for feature store registration.
+- It does not create a managed feature store workspace for you.
+- It does not register the entity or feature set automatically because those steps target a feature store workspace rather than the regular Azure ML workspace used by this repo.
 
 </details>
 
@@ -512,6 +575,8 @@ Submit the pipeline:
 By default, `submit.sh`:
 
 - submits the pipeline
+- checks whether `azureml:iris_csv:1` exists and, if so, passes it as the optional `data_input`
+- falls back to the built-in/local Iris loading path if the data asset is not found
 - waits for completion
 - downloads outputs locally into `outputs/azure_runs/<YYYY-MM-DD>/<PIPELINE_JOB_NAME>/`
 
@@ -519,6 +584,13 @@ Disable waiting and auto-download:
 
 ```bash
 WAIT_FOR_COMPLETION=false AUTO_DOWNLOAD_OUTPUTS=false ./scripts/pipeline/submit.sh
+```
+
+Control the automatic data-asset behaviour:
+
+```bash
+USE_DATA_ASSET=false ./scripts/pipeline/submit.sh
+USE_DATA_ASSET=true DATA_ASSET_NAME=iris_csv DATA_ASSET_VERSION=1 ./scripts/pipeline/submit.sh
 ```
 
 Use a specific compute target instead of serverless:
