@@ -385,6 +385,8 @@ If you also register the components first, they will appear under the `Component
 ./scripts/pipeline/register-components.sh
 ```
 
+Registering the components is now required before pipeline submission, because the pipeline references the registered component assets in the workspace using `azureml:<component_name>@latest`.
+
 ### Submit the Pipeline
 
 The pipeline defaults to:
@@ -412,6 +414,39 @@ az ml job create \
   --file pipelines/train_evaluate.yml \
   --set settings.default_compute=azureml:cpu-cluster
 ```
+
+### Recommended Azure ML Flow
+
+For the cleanest end-to-end workflow in this repo:
+
+1. register the components so they appear under `Components`
+2. submit the train/evaluate pipeline
+3. register the pipeline-produced model output
+4. deploy the latest registered model to the endpoint
+
+In commands:
+
+```bash
+./scripts/pipeline/register-components.sh
+./scripts/pipeline/submit.sh
+./scripts/model/register-from-job.sh
+./scripts/deployment/deploy.sh
+```
+
+This gives you a full Azure ML flow across:
+
+- `Components`
+- `Pipelines`
+- `Models`
+- `Endpoints`
+
+If you update a component definition or the Python code used by a component, rerun:
+
+```bash
+./scripts/pipeline/register-components.sh
+```
+
+before submitting the pipeline again, so the workspace gets a new component version and `@latest` resolves to the new one.
 
 ### Pipeline Outputs
 

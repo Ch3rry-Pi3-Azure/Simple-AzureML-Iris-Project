@@ -3,7 +3,6 @@ type: command
 
 name: iris_train_model
 display_name: Iris Train Model
-version: 1
 
 inputs:
   n_estimators:

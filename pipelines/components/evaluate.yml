@@ -3,7 +3,6 @@ type: command
 
 name: iris_evaluate_model
 display_name: Iris Evaluate Model
-version: 1
 
 inputs:
   model_input:

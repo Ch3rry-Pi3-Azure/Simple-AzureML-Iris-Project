@@ -25,7 +25,7 @@ outputs:
 jobs:
   train_job:
     type: command
-    component: ./components/train.yml
+    component: azureml:iris_train_model@latest
     inputs:
       n_estimators: ${{parent.inputs.n_estimators}}
       max_depth: ${{parent.inputs.max_depth}}
@@ -38,7 +38,7 @@ jobs:
 
   evaluate_job:
     type: command
-    component: ./components/evaluate.yml
+    component: azureml:iris_evaluate_model@latest
     inputs:
       model_input: ${{parent.jobs.train_job.outputs.model_output}}
       test_size: ${{parent.inputs.test_size}}

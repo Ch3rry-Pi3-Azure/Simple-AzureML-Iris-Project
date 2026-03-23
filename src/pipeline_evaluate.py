@@ -96,8 +96,6 @@ def main() -> None:
         json.dumps(results["confusion_matrix"].tolist(), indent=2),
         encoding="utf-8",
     )
-    mlflow.log_artifacts(str(evaluation_output), artifact_path="evaluation_metrics")
-
     print("Pipeline evaluation step completed.")
     print(f"Evaluation output: {evaluation_output}")
 
