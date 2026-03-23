@@ -1,29 +1,72 @@
+# ================================================================
+# Azure ML Command Component: Iris Evaluate Model
+#
+# This command component runs the evaluation stage of the project's
+# Azure ML pipeline. It performs the following tasks:
+#
+#   1. loads the MLflow model produced by the training component
+#   2. recreates the deterministic held-out test split
+#   3. computes evaluation metrics for the trained model
+#   4. writes reports and plots to an output folder
+#
+# The component is registered as an Azure ML component asset and is
+# then referenced from the pipeline job YAML using:
+#
+#   azureml:iris_evaluate_model@latest
+# ================================================================
+
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 type: command
 
+# Component identity shown in Azure ML Studio
 name: iris_evaluate_model
 display_name: Iris Evaluate Model
 
+# ------------------------------------------------
+# Inputs
+# ------------------------------------------------
 inputs:
+  # MLflow model folder produced by the training component
   model_input:
     type: mlflow_model
+
+  # Fraction of data reserved for the held-out test split
   test_size:
     type: number
     default: 0.2
+
+  # Random seed controlling the train/test data split
   data_random_state:
     type: integer
     default: 5901
 
+# ------------------------------------------------
+# Outputs
+# ------------------------------------------------
 outputs:
+  # Directory containing metrics, reports, and plots
   evaluation_output:
     type: uri_folder
 
+# ------------------------------------------------
+# Code and Environment
+# ------------------------------------------------
+
+# Source folder uploaded for component execution
 code: ../../src
 
 environment:
+  # Base Azure ML image for component execution
   image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+
+  # Conda specification containing runtime dependencies
   conda_file: ../conda.yml
 
+# ------------------------------------------------
+# Command
+# ------------------------------------------------
+# The component entry point is `pipeline_evaluate.py` located in the
+# `src/` directory referenced above.
 command: >-
   python pipeline_evaluate.py
   --model-input ${{inputs.model_input}}

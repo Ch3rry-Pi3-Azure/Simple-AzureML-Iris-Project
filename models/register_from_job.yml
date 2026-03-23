@@ -1,10 +1,28 @@
+# ================================================================
+# Azure ML Model Asset Definition
+#
+# This YAML template registers a model asset from the `trained_model`
+# output of a completed Azure ML pipeline job.
+#
+# The path is intentionally written with a placeholder job name so the
+# helper script can override it dynamically at registration time.
+# ================================================================
+
 $schema: https://azuremlschemas.azureedge.net/latest/model.schema.json
 
+# Registered model name shown in Azure ML Studio
 name: simple_iris_rf_model
+
+# Human-readable model description
 description: Iris Random Forest model registered from an Azure ML pipeline job output.
+
+# MLflow model asset type
 type: mlflow_model
+
+# Placeholder path overridden by the registration helper script
 path: azureml://jobs/REPLACE_WITH_JOB_NAME/outputs/trained_model
 
 tags:
+  # Lightweight metadata for discovery and traceability
   project: azure-aml-iris
   source: pipeline-output

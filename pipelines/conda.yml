@@ -1,15 +1,42 @@
+# ================================================================
+# Azure ML Pipeline Environment
+#
+# This Conda environment is used by the Azure ML pipeline components
+# that perform training and evaluation. It includes:
+#
+#   - MLflow for model packaging and metric logging
+#   - azureml-mlflow for Azure ML tracking integration
+#   - matplotlib for plot generation
+#   - scikit-learn for modelling and evaluation
+#   - pandas and numpy for tabular data processing
+# ================================================================
+
 name: iris_pipeline_env
 
 channels:
+  # Default Conda channel for the environment build
   - defaults
 
 dependencies:
+  # Python runtime used by the component steps
   - python=3.10
+
+  # Required to install pip-managed packages
   - pip
+
   - pip:
+      # MLflow core runtime
       - mlflow==2.16.2
+
+      # Azure ML integration for MLflow tracking
       - azureml-mlflow==1.61.0
+
+      # Plot generation for reports and artifacts
       - matplotlib==3.9.2
+
+      # Model training and evaluation library
       - scikit-learn==1.5.1
+
+      # Tabular data processing libraries
       - pandas==2.2.2
       - numpy==1.26.4

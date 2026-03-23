@@ -1,43 +1,94 @@
+# ================================================================
+# Azure ML Pipeline Job: Iris Train And Evaluate
+#
+# This pipeline orchestrates the project's Azure ML workflow in two
+# registered component steps:
+#
+#   1. train_job
+#      - runs GridSearchCV
+#      - trains the best Random Forest model
+#      - emits an MLflow model and training artifacts
+#
+#   2. evaluate_job
+#      - loads the trained model
+#      - recreates the held-out test split
+#      - emits evaluation reports and plots
+#
+# The pipeline exposes top-level outputs for the trained model,
+# training artifacts, and evaluation artifacts.
+# ================================================================
+
 $schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 
 display_name: iris_train_evaluate_pipeline
 description: Train and evaluate an Iris classifier as an Azure ML pipeline.
 
+# ------------------------------------------------
+# Pipeline Settings
+# ------------------------------------------------
 settings:
+  # Default compute target for child jobs
   default_compute: azureml:serverless
 
+# ------------------------------------------------
+# Pipeline Inputs
+# ------------------------------------------------
 inputs:
+  # Random seed used by the model and search process
   model_random_state: 5901
+
+  # Fraction of data reserved for the held-out test split
   test_size: 0.2
+
+  # Random seed controlling the train/test data split
   data_random_state: 5901
 
+# ------------------------------------------------
+# Pipeline Outputs
+# ------------------------------------------------
 outputs:
+  # Top-level model output from the training step
   trained_model:
     type: mlflow_model
+
+  # Top-level directory containing training metrics and plots
   train_metrics:
     type: uri_folder
+
+  # Top-level directory containing evaluation metrics and plots
   evaluation_report:
     type: uri_folder
 
+# ------------------------------------------------
+# Jobs
+# ------------------------------------------------
 jobs:
   train_job:
     type: command
+
+    # Registered component asset used for the training stage
     component: azureml:iris_train_model@latest
+
     inputs:
       model_random_state: ${{parent.inputs.model_random_state}}
       test_size: ${{parent.inputs.test_size}}
       data_random_state: ${{parent.inputs.data_random_state}}
+
     outputs:
       model_output: ${{parent.outputs.trained_model}}
       metrics_output: ${{parent.outputs.train_metrics}}
 
   evaluate_job:
     type: command
+
+    # Registered component asset used for the evaluation stage
     component: azureml:iris_evaluate_model@latest
+
     inputs:
       model_input: ${{parent.jobs.train_job.outputs.model_output}}
       test_size: ${{parent.inputs.test_size}}
       data_random_state: ${{parent.inputs.data_random_state}}
+
     outputs:
       evaluation_output: ${{parent.outputs.evaluation_report}}
