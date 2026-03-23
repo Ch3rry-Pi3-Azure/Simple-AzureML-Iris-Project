@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: iris_csv
+version: 1
+description: Iris CSV stored in ADLS Gen2
+type: uri_file
+path: azureml://datastores/iris_adls_ds/paths/raw/iris.csv

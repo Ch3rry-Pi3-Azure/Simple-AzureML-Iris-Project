@@ -18,8 +18,10 @@ This repository covers:
 - [Overview](#overview)
 - [Repository Structure](#repository-structure)
 - [Azure Prerequisites](#azure-prerequisites)
+- [Windows Azure CLI Setup](#windows-azure-cli-setup)
 - [Git And GitHub Setup](#git-and-github-setup)
 - [Local Workflow](#local-workflow)
+- [ADLS Datastore And Data Asset Setup](#adls-datastore-and-data-asset-setup)
 - [Azure ML Pipeline Workflow](#azure-ml-pipeline-workflow)
 - [Endpoint Deployment And Teardown](#endpoint-deployment-and-teardown)
 - [Azure ML Monitoring](#azure-ml-monitoring)
@@ -179,6 +181,58 @@ az provider register --namespace Microsoft.KeyVault
 
 </details>
 
+## Windows Azure CLI Setup
+
+<details>
+<summary>Show or hide section</summary>
+
+On local Windows machines, two practical setup points matter:
+
+1. use the 64-bit Azure CLI
+2. if the default `C:\Users\<YOU>\.azure` folder causes permission issues, point Azure CLI at a repo-local config folder for the current shell session
+
+If `az` is not on `PATH` after reinstalling Azure CLI, add it for the current PowerShell session:
+
+```powershell
+$env:PATH = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;$env:PATH"
+az version
+```
+
+Use a repo-local Azure CLI config directory in the current shell:
+
+```powershell
+$env:AZURE_CONFIG_DIR = "$PWD\.azure"
+New-Item -ItemType Directory -Force -Path $env:AZURE_CONFIG_DIR | Out-Null
+az version
+```
+
+Check your current subscription:
+
+```powershell
+az account show --query "{subscriptionName:name,subscriptionId:id,tenantId:tenantId}" -o table
+```
+
+List Azure ML workspaces:
+
+```powershell
+az ml workspace list --query "[].{workspace:name,resourceGroup:resourceGroup,location:location}" -o table
+```
+
+Set Azure CLI defaults for this repo:
+
+```powershell
+az configure --defaults group="<YOUR_RESOURCE_GROUP>" workspace="<YOUR_WORKSPACE_NAME>" location="<YOUR_REGION>"
+az configure --list-defaults
+```
+
+Example from this repo setup:
+
+```powershell
+az configure --defaults group="azureml_rg" workspace="azureml_test" location="westeurope"
+```
+
+</details>
+
 ## Git And GitHub Setup
 
 <details>
@@ -301,6 +355,131 @@ Notes on plots:
 - `roc_curve.png` is multiclass one-vs-rest, so it contains three curves
 - a true loss-vs-iteration plot is not included because the deployed model is a `RandomForestClassifier`
 - the more appropriate training progression plots here are `learning_curve.png` and `oob_error_curve.png`
+
+</details>
+
+## ADLS Datastore And Data Asset Setup
+
+<details>
+<summary>Show or hide section</summary>
+
+If you want the Iris data to live in Azure storage instead of being loaded directly from `sklearn.datasets.load_iris()`, a clean first step is:
+
+1. create an ADLS Gen2-capable storage account
+2. create a filesystem
+3. upload `iris.csv`
+4. register an Azure ML datastore that points at that filesystem
+5. create an Azure ML data asset for the CSV
+
+This setup is useful even before introducing a feature store.
+
+Set helper variables in PowerShell:
+
+```powershell
+$RG="azureml_rg"
+$LOCATION="westeurope"
+$WORKSPACE="azureml_test"
+$SA="azuremlirishp01"
+$FS="irisfs"
+$DS="iris_adls_ds"
+$DATA_ASSET="iris_csv"
+```
+
+Create the storage account with hierarchical namespace enabled:
+
+```powershell
+az storage account create `
+  --name $SA `
+  --resource-group $RG `
+  --location $LOCATION `
+  --sku Standard_LRS `
+  --kind StorageV2 `
+  --allow-blob-public-access false `
+  --enable-hierarchical-namespace true `
+  --min-tls-version TLS1_2
+```
+
+Verify the storage account:
+
+```powershell
+az storage account show `
+  --name $SA `
+  --resource-group $RG `
+  --query "{name:name,kind:kind,location:primaryLocation,isHnsEnabled:isHnsEnabled,minimumTlsVersion:minimumTlsVersion}" `
+  -o table
+```
+
+If the storage account was created before `TLS1_2` was applied, correct it explicitly:
+
+```powershell
+az storage account update --name $SA --resource-group $RG --min-tls-version TLS1_2
+```
+
+Create the ADLS Gen2 filesystem:
+
+```powershell
+az storage fs create --name $FS --account-name $SA --auth-mode login
+az storage fs list --account-name $SA --auth-mode login -o table
+```
+
+Upload `iris.csv` into the filesystem:
+
+```powershell
+az storage fs file upload `
+  --source ".\data\iris.csv" `
+  --path "raw/iris.csv" `
+  --file-system $FS `
+  --account-name $SA `
+  --auth-mode login
+```
+
+Create the `infra/` folder and write the datastore YAML:
+
+```powershell
+New-Item -ItemType Directory -Force -Path .\infra | Out-Null
+
+@'
+$schema: https://azuremlschemas.azureedge.net/latest/azureDataLakeGen2.schema.json
+name: iris_adls_ds
+type: azure_data_lake_gen2
+description: Iris data in ADLS Gen2
+account_name: azuremlirishp01
+filesystem: irisfs
+'@ | Set-Content -Path .\infra\adls_datastore.yml
+```
+
+Register the datastore:
+
+```powershell
+az ml datastore create --file .\infra\adls_datastore.yml
+az ml datastore show --name $DS
+```
+
+Write the data asset YAML:
+
+```powershell
+@'
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: iris_csv
+version: 1
+description: Iris CSV stored in ADLS Gen2
+type: uri_file
+path: azureml://datastores/iris_adls_ds/paths/raw/iris.csv
+'@ | Set-Content -Path .\infra\iris_data.yml
+```
+
+Register the data asset:
+
+```powershell
+az ml data create --file .\infra\iris_data.yml
+az ml data show --name $DATA_ASSET --version 1
+```
+
+Notes:
+
+- This repository does not yet read training data from an Azure ML data asset; it still loads Iris directly inside `src/data.py`.
+- The datastore and data asset are the storage and cataloguing layer. They do not automatically change online inference in `src/score.py`.
+- The next repo change after this setup is to update `src/data.py`, `src/pipeline_train.py`, `src/pipeline_evaluate.py`, and the pipeline YAML files so the training jobs consume the registered data asset.
 
 </details>
 

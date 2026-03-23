@@ -9,6 +9,7 @@ outputs/
 .venv/
 venv/
 .env
+.azure/
 
 .ipynb_checkpoints/
 .DS_Store
