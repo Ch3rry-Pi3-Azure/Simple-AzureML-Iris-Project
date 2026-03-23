@@ -321,6 +321,18 @@ This will:
 - train a Random Forest classifier
 - log metrics to MLflow
 - save the model locally to `outputs/iris_mlflow_model`
+- save dated local run artifacts under `outputs/local_runs/<YYYY-MM-DD>/<HHMMSS>_<RUN_ID>/`
+
+The local run artifact folder includes:
+
+- `metrics.json`
+- `classification_report.txt`
+- `classification_report.json`
+- `classification_report.png`
+- `confusion_matrix.json`
+- `confusion_matrix.png`
+- `roc_curve.png`
+- `learning_curve.png`
 
 ### 2. Run a Local Prediction Check
 
@@ -467,6 +479,21 @@ The key logged metrics are:
 
 - training: `train_accuracy`, `train_precision_weighted`, `train_recall_weighted`, `train_f1_weighted`
 - evaluation: `eval_accuracy`, `eval_precision_weighted`, `eval_recall_weighted`, `eval_f1_weighted`
+
+The pipeline output folders also now include richer artifacts such as:
+
+- `classification_report.txt`
+- `classification_report.json`
+- `classification_report.png`
+- `confusion_matrix.json`
+- `confusion_matrix.png`
+- `roc_curve.png`
+
+The training step additionally writes:
+
+- `learning_curve.png`
+
+For this project, a true training/loss curve is not included because the model is a Random Forest classifier rather than an iterative optimizer-based model. A learning curve is a better fit here.
 
 This means the pipeline is now a clean upstream workflow for:
 

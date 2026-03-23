@@ -20,11 +20,43 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
+    from .artifact_names import (
+        CLASSIFICATION_REPORT_JSON,
+        CLASSIFICATION_REPORT_PNG,
+        CLASSIFICATION_REPORT_TXT,
+        CONFUSION_MATRIX_JSON,
+        CONFUSION_MATRIX_PNG,
+        LEARNING_CURVE_PNG,
+        METRICS_JSON,
+        ROC_CURVE_PNG,
+    )
     from .data import load_data
     from .evaluate import evaluate_model
+    from .visualize import (
+        save_classification_report_heatmap,
+        save_confusion_matrix_plot,
+        save_learning_curve_plot,
+        save_multiclass_roc_curve,
+    )
 except ImportError:
+    from artifact_names import (
+        CLASSIFICATION_REPORT_JSON,
+        CLASSIFICATION_REPORT_PNG,
+        CLASSIFICATION_REPORT_TXT,
+        CONFUSION_MATRIX_JSON,
+        CONFUSION_MATRIX_PNG,
+        LEARNING_CURVE_PNG,
+        METRICS_JSON,
+        ROC_CURVE_PNG,
+    )
     from data import load_data
     from evaluate import evaluate_model
+    from visualize import (
+        save_classification_report_heatmap,
+        save_confusion_matrix_plot,
+        save_learning_curve_plot,
+        save_multiclass_roc_curve,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -62,6 +94,7 @@ def main() -> None:
 
     results = evaluate_model(model, X_test, y_test)
     predictions = results["predictions"]
+    probabilities = model.predict_proba(X_test)
 
     metrics = {
         "accuracy": results["accuracy"],
@@ -105,6 +138,38 @@ def main() -> None:
         }
     )
 
+    auc_scores = save_multiclass_roc_curve(
+        y_true=y_test,
+        y_score=probabilities,
+        output_path=metrics_output / ROC_CURVE_PNG,
+    )
+    train_auc_metrics = {
+        "train_auc_setosa": auc_scores["auc_setosa"],
+        "train_auc_versicolor": auc_scores["auc_versicolor"],
+        "train_auc_virginica": auc_scores["auc_virginica"],
+    }
+    mlflow.log_metrics(train_auc_metrics)
+    metrics.update(train_auc_metrics)
+
+    save_confusion_matrix_plot(
+        confusion_matrix=results["confusion_matrix"],
+        output_path=metrics_output / CONFUSION_MATRIX_PNG,
+    )
+    save_classification_report_heatmap(
+        classification_report_dict=results["classification_report_dict"],
+        output_path=metrics_output / CLASSIFICATION_REPORT_PNG,
+    )
+    save_learning_curve_plot(
+        estimator=RandomForestClassifier(
+            n_estimators=args.n_estimators,
+            max_depth=args.max_depth,
+            random_state=args.model_random_state,
+        ),
+        X=X_train,
+        y=y_train,
+        output_path=metrics_output / LEARNING_CURVE_PNG,
+    )
+
     signature = infer_signature(X_test, predictions)
     input_example = X_train.head(1)
 
@@ -115,15 +180,19 @@ def main() -> None:
         input_example=input_example,
     )
 
-    (metrics_output / "metrics.json").write_text(
+    (metrics_output / METRICS_JSON).write_text(
         json.dumps(metrics, indent=2),
         encoding="utf-8",
     )
-    (metrics_output / "classification_report.txt").write_text(
+    (metrics_output / CLASSIFICATION_REPORT_TXT).write_text(
         results["classification_report_text"],
         encoding="utf-8",
     )
-    (metrics_output / "confusion_matrix.json").write_text(
+    (metrics_output / CLASSIFICATION_REPORT_JSON).write_text(
+        json.dumps(results["classification_report_dict"], indent=2),
+        encoding="utf-8",
+    )
+    (metrics_output / CONFUSION_MATRIX_JSON).write_text(
         json.dumps(results["confusion_matrix"].tolist(), indent=2),
         encoding="utf-8",
     )

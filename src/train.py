@@ -13,6 +13,8 @@ directly from an MLflow run URI.
 
 from __future__ import annotations
 
+from datetime import datetime
+import json
 from pathlib import Path
 
 import mlflow
@@ -22,11 +24,43 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
+    from .artifact_names import (
+        CLASSIFICATION_REPORT_JSON,
+        CLASSIFICATION_REPORT_PNG,
+        CLASSIFICATION_REPORT_TXT,
+        CONFUSION_MATRIX_JSON,
+        CONFUSION_MATRIX_PNG,
+        LEARNING_CURVE_PNG,
+        METRICS_JSON,
+        ROC_CURVE_PNG,
+    )
     from .data import load_data
     from .evaluate import evaluate_model
+    from .visualize import (
+        save_classification_report_heatmap,
+        save_confusion_matrix_plot,
+        save_learning_curve_plot,
+        save_multiclass_roc_curve,
+    )
 except ImportError:
+    from artifact_names import (
+        CLASSIFICATION_REPORT_JSON,
+        CLASSIFICATION_REPORT_PNG,
+        CLASSIFICATION_REPORT_TXT,
+        CONFUSION_MATRIX_JSON,
+        CONFUSION_MATRIX_PNG,
+        LEARNING_CURVE_PNG,
+        METRICS_JSON,
+        ROC_CURVE_PNG,
+    )
     from data import load_data
     from evaluate import evaluate_model
+    from visualize import (
+        save_classification_report_heatmap,
+        save_confusion_matrix_plot,
+        save_learning_curve_plot,
+        save_multiclass_roc_curve,
+    )
 
 
 # Name of the MLflow experiment used to track runs
@@ -34,6 +68,7 @@ EXPERIMENT_NAME = "simple_iris_demo"
 
 # Local directory where the trained MLflow model will be saved
 LOCAL_MODEL_DIR = Path("outputs") / "iris_mlflow_model"
+LOCAL_RUNS_DIR = Path("outputs") / "local_runs"
 
 
 def train_model() -> None:
@@ -118,6 +153,7 @@ def train_model() -> None:
         # Reuse predictions returned by the evaluation function
         #   - This avoids computing model.predict() twice
         predictions = results["predictions"]
+        probabilities = model.predict_proba(X_test)
 
         # Infer model input/output schema for MLflow
         #   - This is useful for deployment and validation
@@ -150,6 +186,66 @@ def train_model() -> None:
             f1_score(y_test, predictions, average="weighted"),
         )
 
+        timestamp = datetime.now().strftime("%H%M%S")
+        date_folder = datetime.now().strftime("%Y-%m-%d")
+        run_output_dir = LOCAL_RUNS_DIR / date_folder / f"{timestamp}_{run.info.run_id}"
+        run_output_dir.mkdir(parents=True, exist_ok=True)
+
+        auc_scores = save_multiclass_roc_curve(
+            y_true=y_test,
+            y_score=probabilities,
+            output_path=run_output_dir / ROC_CURVE_PNG,
+        )
+        save_confusion_matrix_plot(
+            confusion_matrix=results["confusion_matrix"],
+            output_path=run_output_dir / CONFUSION_MATRIX_PNG,
+        )
+        save_classification_report_heatmap(
+            classification_report_dict=results["classification_report_dict"],
+            output_path=run_output_dir / CLASSIFICATION_REPORT_PNG,
+        )
+        save_learning_curve_plot(
+            estimator=RandomForestClassifier(
+                n_estimators=n_estimators,
+                max_depth=max_depth,
+                random_state=random_state,
+            ),
+            X=X_train,
+            y=y_train,
+            output_path=run_output_dir / LEARNING_CURVE_PNG,
+        )
+
+        local_metrics = {
+            "accuracy": results["accuracy"],
+            "precision_weighted": precision_score(y_test, predictions, average="weighted"),
+            "recall_weighted": recall_score(y_test, predictions, average="weighted"),
+            "f1_weighted": f1_score(y_test, predictions, average="weighted"),
+            "train_auc_setosa": auc_scores["auc_setosa"],
+            "train_auc_versicolor": auc_scores["auc_versicolor"],
+            "train_auc_virginica": auc_scores["auc_virginica"],
+            "n_estimators": n_estimators,
+            "max_depth": max_depth,
+            "random_state": random_state,
+            "run_id": run.info.run_id,
+        }
+
+        (run_output_dir / METRICS_JSON).write_text(
+            json.dumps(local_metrics, indent=2),
+            encoding="utf-8",
+        )
+        (run_output_dir / CLASSIFICATION_REPORT_TXT).write_text(
+            results["classification_report_text"],
+            encoding="utf-8",
+        )
+        (run_output_dir / CLASSIFICATION_REPORT_JSON).write_text(
+            json.dumps(results["classification_report_dict"], indent=2),
+            encoding="utf-8",
+        )
+        (run_output_dir / CONFUSION_MATRIX_JSON).write_text(
+            json.dumps(results["confusion_matrix"].tolist(), indent=2),
+            encoding="utf-8",
+        )
+
         # Ensure the output directory exists before saving the model
         LOCAL_MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -166,6 +262,7 @@ def train_model() -> None:
         print(f"Run ID: {run.info.run_id}")
         print(f"Accuracy: {results['accuracy']:.4f}")
         print(f"Local MLflow model saved to: {LOCAL_MODEL_DIR.resolve()}")
+        print(f"Local run artifacts saved to: {run_output_dir.resolve()}")
 
         # Print detailed evaluation outputs
         print("\nClassification report:")
