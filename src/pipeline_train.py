@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--metrics-output", required=True)
     parser.add_argument("--n-estimators", type=int, default=100)
     parser.add_argument("--max-depth", type=int, default=4)
-    parser.add_argument("--model-random-state", type=int, default=42)
+    parser.add_argument("--model-random-state", type=int, default=5901)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--data-random-state", type=int, default=5901)
     return parser.parse_args()

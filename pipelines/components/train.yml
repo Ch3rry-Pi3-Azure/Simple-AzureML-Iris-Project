@@ -14,7 +14,7 @@ inputs:
     default: 4
   model_random_state:
     type: integer
-    default: 42
+    default: 5901
   test_size:
     type: number
     default: 0.2

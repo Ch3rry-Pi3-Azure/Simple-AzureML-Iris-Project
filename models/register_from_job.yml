@@ -1,0 +1,10 @@
+$schema: https://azuremlschemas.azureedge.net/latest/model.schema.json
+
+name: simple_iris_rf_model
+description: Iris Random Forest model registered from an Azure ML pipeline job output.
+type: mlflow_model
+path: azureml://jobs/REPLACE_WITH_JOB_NAME/outputs/trained_model/paths/model_output
+
+tags:
+  project: azure-aml-iris
+  source: pipeline-output

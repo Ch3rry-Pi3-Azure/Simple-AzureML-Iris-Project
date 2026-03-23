@@ -40,6 +40,8 @@ Azure-AML-Iris/
 │   └── components/
 │       ├── evaluate.yml
 │       └── train.yml
+├── models/
+│   └── register_from_job.yml
 ├── scripts/
 │   ├── deployment/
 │   │   ├── autoscale.sh
@@ -53,6 +55,8 @@ Azure-AML-Iris/
 │   │   ├── reset.sh
 │   │   ├── status.sh
 │   │   └── test-endpoint.sh
+│   ├── model/
+│   │   └── register-from-job.sh
 │   └── pipeline/
 │       ├── register-components.sh
 │       └── submit.sh
@@ -114,6 +118,9 @@ Azure-AML-Iris/
 
 - `pipelines/train_evaluate.yml`
   Defines the Azure ML pipeline job that chains the training and evaluation components together.
+
+- `models/register_from_job.yml`
+  Template for registering a pipeline-produced MLflow model output as an Azure ML model asset.
 
 ## Azure Prerequisites
 
@@ -425,6 +432,40 @@ This means the pipeline is now a clean upstream workflow for:
 - model evaluation
 - later model registration
 - later endpoint deployment
+
+### Register The Pipeline Output As A Model
+
+The train/evaluate pipeline does not automatically register the model asset. Registration is handled separately using the model YAML in `models/register_from_job.yml`.
+
+After the pipeline run finishes, get the job name:
+
+```bash
+az ml job list -o table
+```
+
+Then register the `trained_model` pipeline output:
+
+```bash
+./scripts/model/register-from-job.sh <PIPELINE_JOB_NAME>
+```
+
+For example:
+
+```bash
+./scripts/model/register-from-job.sh upbeat_tree_q9x2k1lm4n
+```
+
+This creates or versions the Azure ML model asset:
+
+```text
+simple_iris_rf_model
+```
+
+You can then verify it under `Models` in Azure ML Studio or by CLI:
+
+```bash
+az ml model list --name simple_iris_rf_model -o table
+```
 
 ### Suggested Next Step
 

@@ -97,7 +97,7 @@ def train_model() -> None:
     #   - These are kept explicit to make logging and later adjustment easier
     n_estimators = 100
     max_depth = 4
-    random_state = 42
+    random_state = 5901
 
     # Start an MLflow run to track this training session
     with mlflow.start_run() as run:

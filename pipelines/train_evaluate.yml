@@ -10,7 +10,7 @@ settings:
 inputs:
   n_estimators: 100
   max_depth: 4
-  model_random_state: 42
+  model_random_state: 5901
   test_size: 0.2
   data_random_state: 5901
 
