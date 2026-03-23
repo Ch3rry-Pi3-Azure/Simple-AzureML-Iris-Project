@@ -19,7 +19,7 @@ if [[ -z "$JOB_NAME" || "$JOB_NAME" == "null" ]]; then
   exit 1
 fi
 
-MODEL_PATH="azureml://jobs/${JOB_NAME}/outputs/trained_model/paths/model_output"
+MODEL_PATH="azureml://jobs/${JOB_NAME}/outputs/trained_model"
 
 echo "Registering model '${MODEL_NAME}' from pipeline job '${JOB_NAME}'..."
 
