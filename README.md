@@ -41,19 +41,21 @@ Azure-AML-Iris/
 │       ├── evaluate.yml
 │       └── train.yml
 ├── scripts/
-│   ├── autoscale.sh
-│   ├── check-azureml.sh
-│   ├── cleanup.sh
-│   ├── deploy.sh
-│   ├── describe.sh
-│   ├── get-key.sh
-│   ├── invoke-curl.sh
-│   ├── logs.sh
-│   ├── register-pipeline-components.sh
-│   ├── reset.sh
-│   ├── status.sh
-│   ├── submit-pipeline.sh
-│   └── test-endpoint.sh
+│   ├── deployment/
+│   │   ├── autoscale.sh
+│   │   ├── check-azureml.sh
+│   │   ├── cleanup.sh
+│   │   ├── deploy.sh
+│   │   ├── describe.sh
+│   │   ├── get-key.sh
+│   │   ├── invoke-curl.sh
+│   │   ├── logs.sh
+│   │   ├── reset.sh
+│   │   ├── status.sh
+│   │   └── test-endpoint.sh
+│   └── pipeline/
+│       ├── register-components.sh
+│       └── submit.sh
 ├── src/
 │   ├── __init__.py
 │   ├── data.py
@@ -284,7 +286,7 @@ When you submit `pipelines/train_evaluate.yml`:
 If you also register the components first, they will appear under the `Components` section:
 
 ```bash
-./scripts/register-pipeline-components.sh
+./scripts/pipeline/register-components.sh
 ```
 
 ### Submit the Pipeline
@@ -298,7 +300,7 @@ compute_name = azureml:serverless
 If your workspace supports serverless jobs, you can submit immediately:
 
 ```bash
-./scripts/submit-pipeline.sh
+./scripts/pipeline/submit.sh
 ```
 
 You can also submit the YAML directly:
@@ -359,7 +361,7 @@ This repository is configured for:
 Create the endpoint and deployment:
 
 ```bash
-./scripts/deploy.sh
+./scripts/deployment/deploy.sh
 ```
 
 The deploy script:
@@ -371,31 +373,31 @@ The deploy script:
 Check deployment state:
 
 ```bash
-./scripts/status.sh
+./scripts/deployment/status.sh
 ```
 
 Describe the endpoint:
 
 ```bash
-./scripts/describe.sh
+./scripts/deployment/describe.sh
 ```
 
 Get logs:
 
 ```bash
-./scripts/logs.sh
+./scripts/deployment/logs.sh
 ```
 
 Delete the endpoint when finished:
 
 ```bash
-./scripts/cleanup.sh
+./scripts/deployment/cleanup.sh
 ```
 
 Redeploy from scratch:
 
 ```bash
-./scripts/reset.sh
+./scripts/deployment/reset.sh
 ```
 
 ## Endpoint Request Format
@@ -434,19 +436,19 @@ The checked-in sample request uses the named-feature object format in `deploymen
 Invoke the deployment through Azure ML:
 
 ```bash
-./scripts/test-endpoint.sh
+./scripts/deployment/test-endpoint.sh
 ```
 
 Invoke the scoring URI directly with `curl`:
 
 ```bash
-./scripts/invoke-curl.sh
+./scripts/deployment/invoke-curl.sh
 ```
 
 Retrieve endpoint keys:
 
 ```bash
-./scripts/get-key.sh
+./scripts/deployment/get-key.sh
 ```
 
 ## Azure ML Verification Commands
@@ -496,7 +498,7 @@ az ml online-endpoint show --name roger-iris-endpoint-01 --query scoring_uri -o 
 For a bundled verification pass, run:
 
 ```bash
-./scripts/check-azureml.sh
+./scripts/deployment/check-azureml.sh
 ```
 
 ## Common Azure ML Troubleshooting Notes
