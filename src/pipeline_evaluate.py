@@ -12,7 +12,9 @@ import argparse
 import json
 from pathlib import Path
 
+import mlflow
 import mlflow.pyfunc
+from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
     from .data import load_data
@@ -44,12 +46,43 @@ def main() -> None:
 
     model = mlflow.pyfunc.load_model(args.model_input)
     results = evaluate_model(model, X_test, y_test)
+    predictions = results["predictions"]
 
     metrics = {
         "accuracy": results["accuracy"],
+        "precision_weighted": precision_score(
+            y_test,
+            predictions,
+            average="weighted",
+        ),
+        "recall_weighted": recall_score(
+            y_test,
+            predictions,
+            average="weighted",
+        ),
+        "f1_weighted": f1_score(
+            y_test,
+            predictions,
+            average="weighted",
+        ),
         "test_size": args.test_size,
         "data_random_state": args.data_random_state,
     }
+
+    mlflow.log_params(
+        {
+            "evaluation_test_size": args.test_size,
+            "evaluation_data_random_state": args.data_random_state,
+        }
+    )
+    mlflow.log_metrics(
+        {
+            "eval_accuracy": metrics["accuracy"],
+            "eval_precision_weighted": metrics["precision_weighted"],
+            "eval_recall_weighted": metrics["recall_weighted"],
+            "eval_f1_weighted": metrics["f1_weighted"],
+        }
+    )
 
     (evaluation_output / "metrics.json").write_text(
         json.dumps(metrics, indent=2),
@@ -63,6 +96,7 @@ def main() -> None:
         json.dumps(results["confusion_matrix"].tolist(), indent=2),
         encoding="utf-8",
     )
+    mlflow.log_artifacts(str(evaluation_output), artifact_path="evaluation_metrics")
 
     print("Pipeline evaluation step completed.")
     print(f"Evaluation output: {evaluation_output}")

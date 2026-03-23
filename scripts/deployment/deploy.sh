@@ -7,6 +7,15 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 ENDPOINT_NAME="${ENDPOINT_NAME:-roger-iris-endpoint-01}"
 DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-blue}"
+MODEL_NAME="${MODEL_NAME:-simple_iris_rf_model}"
+MODEL_VERSION="${MODEL_VERSION:-latest}"
+
+if [[ "$MODEL_VERSION" == "latest" ]]; then
+  echo "Resolving latest registered version for model '$MODEL_NAME'..."
+  MODEL_VERSION="$(az ml model list --name "$MODEL_NAME" -o json | python -c $'import json, sys\nmodels = json.load(sys.stdin)\nif not models:\n    raise SystemExit(1)\ndef sort_key(model):\n    version = model.get(\"version\")\n    try:\n        return (0, int(version))\n    except (TypeError, ValueError):\n        return (1, str(version))\nprint(max(models, key=sort_key)[\"version\"])')"
+fi
+
+MODEL_REF="azureml:${MODEL_NAME}:${MODEL_VERSION}"
 
 echo "Creating endpoint..."
 
@@ -15,9 +24,11 @@ az ml online-endpoint create \
 
 
 echo "Creating deployment..."
+echo "Deploying model: $MODEL_REF"
 
 az ml online-deployment create \
   --file "$PROJECT_ROOT/deployment/deployment.yml" \
+  --set model="$MODEL_REF" \
   --all-traffic
 
 

@@ -352,7 +352,7 @@ The deployment YAML currently references:
 azureml:simple_iris_rf_model:1
 ```
 
-If you register a newer version, update `deployment/deployment.yml` accordingly before deployment.
+The checked-in YAML keeps that as a fallback placeholder, but the deployment script now resolves the latest registered version automatically unless you explicitly set `MODEL_VERSION`.
 
 ## Azure ML Pipelines
 
@@ -425,6 +425,13 @@ The pipeline exposes three top-level outputs:
 
 - `evaluation_report`
   Evaluation metrics and reports
+
+The pipeline steps also log first-class MLflow metrics into Azure ML so you can see them under the `Metrics` tab for both `train_job` and `evaluate_job`.
+
+The key logged metrics are:
+
+- training: `train_accuracy`, `train_precision_weighted`, `train_recall_weighted`, `train_f1_weighted`
+- evaluation: `eval_accuracy`, `eval_precision_weighted`, `eval_recall_weighted`, `eval_f1_weighted`
 
 This means the pipeline is now a clean upstream workflow for:
 
@@ -506,7 +513,20 @@ The deploy script:
 
 - creates the managed online endpoint from `deployment/endpoint.yml`
 - creates the deployment from `deployment/deployment.yml`
+- resolves the latest registered version of `simple_iris_rf_model` by default
 - routes traffic to the deployment
+
+Deploy a specific registered model version:
+
+```bash
+MODEL_VERSION=3 ./scripts/deployment/deploy.sh
+```
+
+Deploy a different model name explicitly:
+
+```bash
+MODEL_NAME=my_other_model MODEL_VERSION=7 ./scripts/deployment/deploy.sh
+```
 
 Check deployment state:
 
@@ -537,6 +557,8 @@ Redeploy from scratch:
 ```bash
 ./scripts/deployment/reset.sh
 ```
+
+`reset.sh` uses the same deployment logic, so it also deploys the latest registered model version by default unless you set `MODEL_VERSION`.
 
 ## Endpoint Request Format
 

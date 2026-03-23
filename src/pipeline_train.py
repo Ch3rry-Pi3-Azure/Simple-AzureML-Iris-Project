@@ -13,6 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
+import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
 from sklearn.ensemble import RandomForestClassifier
@@ -86,6 +87,24 @@ def main() -> None:
         "data_random_state": args.data_random_state,
     }
 
+    mlflow.log_params(
+        {
+            "n_estimators": args.n_estimators,
+            "max_depth": args.max_depth,
+            "model_random_state": args.model_random_state,
+            "test_size": args.test_size,
+            "data_random_state": args.data_random_state,
+        }
+    )
+    mlflow.log_metrics(
+        {
+            "train_accuracy": metrics["accuracy"],
+            "train_precision_weighted": metrics["precision_weighted"],
+            "train_recall_weighted": metrics["recall_weighted"],
+            "train_f1_weighted": metrics["f1_weighted"],
+        }
+    )
+
     signature = infer_signature(X_test, predictions)
     input_example = X_train.head(1)
 
@@ -108,6 +127,7 @@ def main() -> None:
         json.dumps(results["confusion_matrix"].tolist(), indent=2),
         encoding="utf-8",
     )
+    mlflow.log_artifacts(str(metrics_output), artifact_path="train_metrics")
 
     print("Pipeline training step completed.")
     print(f"MLflow model output: {model_output}")
