@@ -1,5 +1,11 @@
 """
 Visualization helpers for training and evaluation artifacts.
+
+This module groups the plotting utilities used by both the local
+training workflow and the Azure ML pipeline steps. The plots are
+written to disk as static images so they can be viewed in Azure ML
+job outputs, downloaded locally, or archived alongside other run
+artifacts.
 """
 
 from __future__ import annotations
@@ -8,6 +14,8 @@ from pathlib import Path
 
 import matplotlib
 
+# Use a non-interactive backend so plot generation works in headless
+# environments such as Azure ML jobs and CI runners.
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
@@ -19,10 +27,29 @@ from sklearn.model_selection import learning_curve
 from sklearn.preprocessing import label_binarize
 
 
+# Canonical human-readable class names used in plots.
 CLASS_NAMES = ["setosa", "versicolor", "virginica"]
 
 
 def save_confusion_matrix_plot(confusion_matrix, output_path: Path) -> None:
+    """
+    Render and save a confusion-matrix plot.
+
+    Parameters
+    ----------
+    confusion_matrix :
+        Square matrix containing true-vs-predicted class counts.
+
+    output_path : Path
+        Filesystem path where the PNG should be written.
+
+    Returns
+    -------
+    None
+        The function writes the image to disk and does not return a
+        value.
+    """
+
     fig, ax = plt.subplots(figsize=(6, 5))
     display = ConfusionMatrixDisplay(
         confusion_matrix=confusion_matrix,
@@ -39,6 +66,30 @@ def save_classification_report_heatmap(
     classification_report_dict: dict,
     output_path: Path,
 ) -> None:
+    """
+    Render and save a classification-report heatmap.
+
+    Parameters
+    ----------
+    classification_report_dict : dict
+        Structured classification report produced by
+        ``sklearn.metrics.classification_report(..., output_dict=True)``.
+
+    output_path : Path
+        Filesystem path where the PNG should be written.
+
+    Returns
+    -------
+    None
+        The function writes the image to disk and does not return a
+        value.
+
+    Notes
+    -----
+    - The chart intentionally omits the colour scale because the
+      numeric annotations carry the important information directly.
+    """
+
     report_df = pd.DataFrame(classification_report_dict).transpose()
     plot_df = report_df.loc[
         [index for index in report_df.index if index != "accuracy"],
@@ -75,6 +126,35 @@ def save_multiclass_roc_curve(
     y_score,
     output_path: Path,
 ) -> dict[str, float]:
+    """
+    Render and save a multiclass one-vs-rest ROC chart.
+
+    Parameters
+    ----------
+    y_true :
+        True class labels encoded as integer targets ``0..2``.
+
+    y_score :
+        Per-class probability scores aligned with the class order
+        used during training.
+
+    output_path : Path
+        Filesystem path where the PNG should be written.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary mapping per-class AUC metric names to their scores.
+
+    Notes
+    -----
+    - The plot contains three ROC curves:
+
+        - setosa vs the other classes
+        - versicolor vs the other classes
+        - virginica vs the other classes
+    """
+
     y_true_bin = label_binarize(y_true, classes=[0, 1, 2])
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -104,6 +184,30 @@ def save_learning_curve_plot(
     y,
     output_path: Path,
 ) -> None:
+    """
+    Render and save a learning-curve plot.
+
+    Parameters
+    ----------
+    estimator :
+        Fitted or unfitted scikit-learn compatible estimator.
+
+    X :
+        Feature matrix used to generate the learning-curve scores.
+
+    y :
+        Target labels aligned with ``X``.
+
+    output_path : Path
+        Filesystem path where the PNG should be written.
+
+    Returns
+    -------
+    None
+        The function writes the image to disk and does not return a
+        value.
+    """
+
     train_sizes, train_scores, validation_scores = learning_curve(
         estimator=estimator,
         X=X,
@@ -137,6 +241,39 @@ def save_oob_error_curve(
     best_params: dict,
     random_state: int,
 ) -> None:
+    """
+    Render and save an out-of-bag error curve for the best model.
+
+    Parameters
+    ----------
+    X :
+        Training feature matrix.
+
+    y :
+        Training target labels.
+
+    output_path : Path
+        Filesystem path where the PNG should be written.
+
+    best_params : dict
+        Best hyperparameters returned by GridSearchCV for the
+        Random Forest model.
+
+    random_state : int
+        Seed used to keep the warm-start fitting sequence reproducible.
+
+    Returns
+    -------
+    None
+        The function writes the image to disk and does not return a
+        value.
+
+    Notes
+    -----
+    - This plot is a better Random Forest training-progress analogue
+      than a traditional loss-vs-iteration curve.
+    """
+
     target_n_estimators = int(best_params["n_estimators"])
     step = max(5, target_n_estimators // 10)
     estimator_steps = list(range(step, target_n_estimators + 1, step))

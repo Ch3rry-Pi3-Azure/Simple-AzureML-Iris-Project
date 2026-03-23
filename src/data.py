@@ -3,16 +3,21 @@ Utilities for loading and splitting the Iris dataset.
 
 This module provides a small helper function used in simple
 classification demonstrations. It loads the Iris dataset from
-scikit-learn and prepares a reproducible train–test split.
+scikit-learn and prepares a reproducible train-test split.
 """
+
+from __future__ import annotations
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 
 
-def load_data(test_size: float = 0.2, random_state: int = 5901):
+def load_data(
+    test_size: float = 0.2,
+    random_state: int = 5901,
+) -> tuple:
     """
-    Load the Iris dataset and produce a stratified train–test split.
+    Load the Iris dataset and produce a stratified train-test split.
 
     The function retrieves the Iris dataset using scikit-learn's
     built-in loader and separates the features and labels. The
@@ -30,7 +35,7 @@ def load_data(test_size: float = 0.2, random_state: int = 5901):
         the remaining 80% are used for training.
 
     random_state : int
-        Random seed used by the train–test split.
+        Random seed used by the train-test split.
 
         Providing a fixed seed ensures reproducibility so that
         repeated runs produce identical dataset partitions.
@@ -84,18 +89,18 @@ def load_data(test_size: float = 0.2, random_state: int = 5901):
     (30, 4)
     """
 
-    # Load Iris dataset as a pandas DataFrame
+    # Load Iris dataset as a pandas DataFrame.
     #   - `as_frame=True` returns feature data as a DataFrame
-    #     and labels as a pandas Series
+    #     and labels as a pandas Series.
     iris = load_iris(as_frame=True)
 
-    # Separate features and target labels
+    # Separate features and target labels.
     X = iris.data
     y = iris.target
 
-    # Perform a train–test split
-    #   - Stratification preserves class balance
-    #   - Random state ensures reproducibility
+    # Perform a train-test split.
+    #   - Stratification preserves class balance.
+    #   - Random state ensures reproducibility.
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -104,5 +109,5 @@ def load_data(test_size: float = 0.2, random_state: int = 5901):
         stratify=y,
     )
 
-    # Return partitioned datasets
+    # Return partitioned datasets.
     return X_train, X_test, y_train, y_test

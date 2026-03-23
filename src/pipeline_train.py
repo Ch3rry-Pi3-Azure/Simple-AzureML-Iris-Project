@@ -1,10 +1,11 @@
 """
 Training entry point for the Azure ML pipeline.
 
-This script trains the Iris model and writes two pipeline outputs:
-
-1. an MLflow model folder
-2. a metrics/report folder
+This module runs the training step used by the Azure ML pipeline.
+It performs a GridSearchCV sweep for the project's Random Forest
+classifier, evaluates the best estimator on the deterministic test
+split, logs key metrics to MLflow for the Azure ML UI, and writes
+model and reporting artifacts to the declared pipeline outputs.
 """
 
 from __future__ import annotations
@@ -72,6 +73,16 @@ except ImportError:
 
 
 def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the pipeline training step.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed command-line arguments containing the output folders
+        and dataset split controls used by the training step.
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-output", required=True)
     parser.add_argument("--metrics-output", required=True)
@@ -82,19 +93,41 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """
+    Run the Azure ML pipeline training step.
+
+    The function performs the following steps:
+
+        1. parses command-line arguments
+        2. recreates the deterministic train/test split
+        3. runs GridSearchCV to identify the best Random Forest
+        4. evaluates the best estimator on the held-out test split
+        5. logs key metrics to MLflow for Azure ML
+        6. writes model, report, and plot artifacts to output folders
+
+    Returns
+    -------
+    None
+        The function writes output artifacts to disk and prints a
+        compact completion summary.
+    """
+
     args = parse_args()
 
     model_output = Path(args.model_output)
     metrics_output = Path(args.metrics_output)
 
+    # Ensure Azure ML output mount points exist before writing files.
     model_output.mkdir(parents=True, exist_ok=True)
     metrics_output.mkdir(parents=True, exist_ok=True)
 
+    # Recreate the deterministic project dataset split.
     X_train, X_test, y_train, y_test = load_data(
         test_size=args.test_size,
         random_state=args.data_random_state,
     )
 
+    # Run the shared hyperparameter search used by local training too.
     search = run_grid_search(
         X_train=X_train,
         y_train=y_train,
@@ -108,6 +141,7 @@ def main() -> None:
     best_params = search.best_params_
     best_cv_score = float(search.best_score_)
 
+    # Collect structured metrics for JSON export and UI logging.
     metrics = {
         "accuracy": results["accuracy"],
         "precision_weighted": precision_score(
@@ -135,6 +169,7 @@ def main() -> None:
         "data_random_state": args.data_random_state,
     }
 
+    # Log summary parameters and scalar metrics so Azure ML surfaces them.
     mlflow.log_params(
         {
             "search_strategy": "GridSearchCV",
@@ -157,6 +192,7 @@ def main() -> None:
         }
     )
 
+    # Produce multiclass ROC/AUC outputs for the held-out evaluation set.
     auc_scores = save_multiclass_roc_curve(
         y_true=y_test,
         y_score=probabilities,
@@ -170,6 +206,7 @@ def main() -> None:
     mlflow.log_metrics(train_auc_metrics)
     metrics.update(train_auc_metrics)
 
+    # Produce visual artifacts that complement the numeric metrics.
     save_confusion_matrix_plot(
         confusion_matrix=results["confusion_matrix"],
         output_path=metrics_output / CONFUSION_MATRIX_PNG,
@@ -192,6 +229,7 @@ def main() -> None:
         random_state=args.model_random_state,
     )
 
+    # Save the refitted best estimator in MLflow model format.
     signature = infer_signature(X_test, predictions)
     input_example = X_train.head(1)
 
@@ -202,6 +240,7 @@ def main() -> None:
         input_example=input_example,
     )
 
+    # Persist structured files for download and later inspection.
     (metrics_output / METRICS_JSON).write_text(
         json.dumps(metrics, indent=2),
         encoding="utf-8",
@@ -238,6 +277,7 @@ def main() -> None:
         json.dumps(results["confusion_matrix"].tolist(), indent=2),
         encoding="utf-8",
     )
+
     print("Pipeline training step completed.")
     print(f"MLflow model output: {model_output}")
     print(f"Metrics output: {metrics_output}")

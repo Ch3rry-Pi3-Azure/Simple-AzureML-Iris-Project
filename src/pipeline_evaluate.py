@@ -1,9 +1,10 @@
 """
 Evaluation entry point for the Azure ML pipeline.
 
-This script loads an MLflow model produced by the training component,
-recreates the deterministic Iris test split, and writes evaluation
-artifacts to a pipeline output folder.
+This module loads the MLflow model produced by the training component,
+recreates the deterministic test split used in the project, computes
+evaluation metrics, and writes both structured reports and plots to
+the declared Azure ML pipeline output folder.
 """
 
 from __future__ import annotations
@@ -53,6 +54,16 @@ except ImportError:
 
 
 def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the pipeline evaluation step.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed command-line arguments containing the input model path,
+        output folder, and evaluation split controls.
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-input", required=True)
     parser.add_argument("--evaluation-output", required=True)
@@ -62,16 +73,37 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """
+    Run the Azure ML pipeline evaluation step.
+
+    The function performs the following steps:
+
+        1. parses command-line arguments
+        2. recreates the deterministic evaluation split
+        3. loads the trained MLflow model
+        4. computes evaluation metrics and plots
+        5. logs key metrics to MLflow for the Azure ML UI
+        6. writes reports and images to the declared output folder
+
+    Returns
+    -------
+    None
+        The function writes evaluation artefacts to disk and prints
+        a compact completion summary.
+    """
+
     args = parse_args()
 
     evaluation_output = Path(args.evaluation_output)
     evaluation_output.mkdir(parents=True, exist_ok=True)
 
+    # Recreate the deterministic test partition used across the project.
     _, X_test, _, y_test = load_data(
         test_size=args.test_size,
         random_state=args.data_random_state,
     )
 
+    # Load the pipeline-produced MLflow model and generate predictions.
     model = mlflow.sklearn.load_model(args.model_input)
     results = evaluate_model(model, X_test, y_test)
     predictions = results["predictions"]
@@ -98,6 +130,7 @@ def main() -> None:
         "data_random_state": args.data_random_state,
     }
 
+    # Log parameters and summary metrics so they appear in Azure ML.
     mlflow.log_params(
         {
             "evaluation_test_size": args.test_size,
@@ -113,6 +146,7 @@ def main() -> None:
         }
     )
 
+    # Produce a one-vs-rest ROC chart and per-class AUC metrics.
     auc_scores = save_multiclass_roc_curve(
         y_true=y_test,
         y_score=probabilities,
@@ -133,6 +167,7 @@ def main() -> None:
         }
     )
 
+    # Generate plot artefacts alongside the structured reports.
     save_confusion_matrix_plot(
         confusion_matrix=results["confusion_matrix"],
         output_path=evaluation_output / CONFUSION_MATRIX_PNG,
@@ -142,6 +177,7 @@ def main() -> None:
         output_path=evaluation_output / CLASSIFICATION_REPORT_PNG,
     )
 
+    # Persist structured outputs for downstream inspection or download.
     (evaluation_output / METRICS_JSON).write_text(
         json.dumps(metrics, indent=2),
         encoding="utf-8",
@@ -158,6 +194,7 @@ def main() -> None:
         json.dumps(results["confusion_matrix"].tolist(), indent=2),
         encoding="utf-8",
     )
+
     print("Pipeline evaluation step completed.")
     print(f"Evaluation output: {evaluation_output}")
 
