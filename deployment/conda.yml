@@ -32,6 +32,9 @@ dependencies:
       # Azure ML inference HTTP server
       - azureml-inference-server-http
 
+      # Azure ML production data collection for monitoring
+      - azureml-ai-monitoring
+
       # MLflow runtime for loading saved models
       - mlflow==2.16.2
 

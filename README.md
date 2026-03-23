@@ -100,13 +100,13 @@ Azure-AML-Iris/
   Registers the saved MLflow model into the Azure ML model registry as `simple_iris_rf_model`.
 
 - `src/score.py`
-  Azure ML inference entry point. Azure calls `init()` once when the container starts and `run()` for each request.
+  Azure ML inference entry point. Azure calls `init()` once when the container starts and `run()` for each request. It also logs production model inputs and outputs for Azure ML monitoring.
 
 - `deployment/endpoint.yml`
   Defines the managed online endpoint.
 
 - `deployment/deployment.yml`
-  Defines the deployment attached to the endpoint, including the registered model, scoring script, environment, and compute.
+  Defines the deployment attached to the endpoint, including the registered model, scoring script, environment, compute, and production data collection settings.
 
 - `deployment/conda.yml`
   Defines the inference container environment used by Azure ML.
@@ -122,6 +122,9 @@ Azure-AML-Iris/
 
 - `models/register_from_job.yml`
   Template for registering a pipeline-produced MLflow model output as an Azure ML model asset.
+
+- `monitoring/endpoint_monitor.yml`
+  Defines the recurring Azure ML monitor schedule for endpoint drift and data quality checks.
 
 ## Azure Prerequisites
 
@@ -691,6 +694,90 @@ Redeploy from scratch:
 ```
 
 `reset.sh` uses the same deployment logic, so it also deploys the latest registered model version by default unless you set `MODEL_VERSION`.
+
+## Azure ML Monitoring
+
+This repository now includes the basics needed for Azure ML endpoint monitoring.
+
+The monitoring setup has four parts:
+
+1. `deployment/deployment.yml`
+   enables `data_collector` for `model_inputs` and `model_outputs`
+
+2. `deployment/conda.yml`
+   installs `azureml-ai-monitoring` in the inference environment
+
+3. `src/score.py`
+   logs pandas DataFrames for model inputs and model outputs during inference
+
+4. `monitoring/endpoint_monitor.yml`
+   defines a recurring Azure ML monitor schedule
+
+### What Is Monitored
+
+The checked-in monitor schedule includes:
+
+- input data drift on `model_inputs`
+- input data quality on `model_inputs`
+- prediction drift on `model_outputs`
+
+These signals rely on production data collected from the managed online endpoint after deployment.
+
+### Deploy With Monitoring Enabled
+
+Because monitoring requires the updated inference environment and deployment spec, redeploy the endpoint first:
+
+```bash
+./scripts/deployment/deploy.sh
+```
+
+### Create The Monitor Schedule
+
+Create the recurring Azure ML monitor:
+
+```bash
+./scripts/monitoring/create-monitor.sh
+```
+
+The script targets this deployment by default:
+
+```text
+azureml:roger-iris-endpoint-01:blue
+```
+
+Override the endpoint or deployment name if needed:
+
+```bash
+ENDPOINT_NAME=my-endpoint DEPLOYMENT_NAME=green ./scripts/monitoring/create-monitor.sh
+```
+
+### Check Monitor Status
+
+Show the monitor schedule:
+
+```bash
+./scripts/monitoring/status.sh
+```
+
+You can also inspect schedules directly:
+
+```bash
+az ml schedule list -o table
+```
+
+### Delete The Monitor Schedule
+
+Remove the schedule when you no longer need it:
+
+```bash
+./scripts/monitoring/delete-monitor.sh
+```
+
+### Notes
+
+- Monitoring jobs need production traffic before drift signals become meaningful.
+- The schedule monitors collected endpoint data; it does not replace endpoint logs or health checks.
+- The checked-in schedule is intentionally simple. You can later extend it with reference datasets, alert emails, or model performance monitoring with ground truth data.
 
 ## Endpoint Request Format
 

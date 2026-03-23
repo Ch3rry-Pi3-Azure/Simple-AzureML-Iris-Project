@@ -1,0 +1,77 @@
+# ================================================================
+# Azure ML Model Monitoring Schedule
+#
+# This schedule creates a recurring Azure ML monitor for the managed
+# online endpoint deployment. It relies on `model_inputs` and
+# `model_outputs` data collection being enabled in `deployment.yml`
+# and logged from `src/score.py`.
+#
+# The helper script overrides `name`, `display_name`, and
+# `create_monitor.monitoring_target.endpoint_deployment_id` so the
+# YAML can stay reusable across environments.
+# ================================================================
+
+$schema: http://azureml/sdk-2-0/Schedule.json
+
+name: iris_endpoint_monitor
+display_name: Iris Endpoint Monitor
+description: Monitor Iris endpoint drift and data quality on collected production data.
+
+trigger:
+  # Run the monitoring job once per day.
+  type: recurrence
+  frequency: day
+  interval: 1
+  schedule:
+    hours: 3
+    minutes: 15
+
+create_monitor:
+  compute:
+    # Spark-backed compute used by the monitor jobs.
+    instance_type: standard_e4s_v3
+    runtime_version: "3.4"
+
+  monitoring_target:
+    ml_task: classification
+    endpoint_deployment_id: azureml:roger-iris-endpoint-01:blue
+
+  monitoring_signals:
+    # Monitor feature drift on collected model input rows.
+    inputs_data_drift:
+      type: data_drift
+      production_data:
+        data_context: model_inputs
+        data_window:
+          lookback_window_size: P7D
+          lookback_window_offset: PT0H
+      alert_enabled: true
+      metric_thresholds:
+        numerical:
+          jensen_shannon_distance: 0.10
+
+    # Monitor data quality on collected model input rows.
+    inputs_data_quality:
+      type: data_quality
+      production_data:
+        data_context: model_inputs
+        data_window:
+          lookback_window_size: P7D
+          lookback_window_offset: PT0H
+      alert_enabled: true
+      metric_thresholds:
+        numerical:
+          null_value_rate: 0.05
+
+    # Monitor drift in the predicted class distribution.
+    outputs_prediction_drift:
+      type: prediction_drift
+      production_data:
+        data_context: model_outputs
+        data_window:
+          lookback_window_size: P7D
+          lookback_window_offset: PT0H
+      alert_enabled: true
+      metric_thresholds:
+        categorical:
+          pearsons_chi_squared_test: 0.10

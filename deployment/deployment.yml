@@ -52,12 +52,25 @@ code_configuration:
 # used by the inference server.
 environment:
   # Base Docker image provided by Azure ML
+  #   - Ubuntu 22.04 is required for Azure ML custom data collection
   #   - Pin a specific tag instead of using 'latest'
   #   - This improves deployment reproducibility
-  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
 
   # Conda environment definition for Python dependencies
   conda_file: ./conda.yml
+
+# ------------------------------------------------
+# Production data collection
+# ------------------------------------------------
+# These collectors capture tabular model inputs and outputs so Azure ML
+# Model Monitor can compute drift and data quality signals later.
+data_collector:
+  collections:
+    model_inputs:
+      enabled: 'True'
+    model_outputs:
+      enabled: 'True'
 
 # ------------------------------------------------
 # Compute configuration

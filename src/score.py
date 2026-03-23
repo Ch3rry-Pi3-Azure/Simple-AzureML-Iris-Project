@@ -22,9 +22,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+from typing import Any
 
 import mlflow.pyfunc
 import pandas as pd
+from azureml.ai.monitoring import Collector
 
 
 # Configure module logger
@@ -36,6 +38,10 @@ logger.setLevel(logging.INFO)
 #   - Loaded once during container initialisation
 #   - Reused for each inference request
 model = None
+
+# Global Azure ML collectors used for production data monitoring
+inputs_collector = None
+outputs_collector = None
 
 # Expected feature columns used during training
 #   - These names must match the schema seen by the model
@@ -52,6 +58,65 @@ CLASS_LABELS = {
     1: "versicolor",
     2: "virginica",
 }
+
+
+def _log_collection_error(error: Exception) -> None:
+    """
+    Log data collection failures without breaking endpoint inference.
+
+    Parameters
+    ----------
+    error : Exception
+        Exception raised by the Azure ML data collector.
+
+    Returns
+    -------
+    None
+        The function logs the error and allows inference to continue.
+    """
+
+    logger.warning("Azure ML monitoring collection failed: %s", error)
+
+
+def _resolve_model_path(model_dir: str) -> str:
+    """
+    Resolve the deployed MLflow model path inside the Azure ML mount.
+
+    The repository supports two registration paths:
+
+    1. local/manual registration from ``outputs/iris_mlflow_model``
+    2. pipeline registration from the ``trained_model`` output
+
+    Parameters
+    ----------
+    model_dir : str
+        Root directory mounted by Azure ML via ``AZUREML_MODEL_DIR``.
+
+    Returns
+    -------
+    str
+        Path to the MLflow model directory containing ``MLmodel``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no valid MLflow model directory can be found.
+    """
+
+    candidate_paths = [
+        os.path.join(model_dir, "iris_mlflow_model"),
+        os.path.join(model_dir, "model_output"),
+        model_dir,
+    ]
+
+    for candidate_path in candidate_paths:
+        mlmodel_path = os.path.join(candidate_path, "MLmodel")
+        if os.path.exists(mlmodel_path):
+            return candidate_path
+
+    raise FileNotFoundError(
+        "Could not locate an MLflow model directory under AZUREML_MODEL_DIR."
+    )
 
 
 def init() -> None:
@@ -77,20 +142,20 @@ def init() -> None:
     - Loading the model during initialisation avoids repeated model
       loading on each request, which improves inference performance.
 
-    - The deployed MLflow model is expected to be stored in a
-      subdirectory called ``iris_mlflow_model``.
+    - The deployed MLflow model may be mounted either under the
+      original ``iris_mlflow_model`` folder or under the pipeline
+      registration layout used by Azure ML model assets.
     """
 
-    global model
+    global model, inputs_collector, outputs_collector
 
     # Retrieve the model directory mounted by Azure ML
     model_dir = os.getenv("AZUREML_MODEL_DIR")
     if not model_dir:
         raise ValueError("AZUREML_MODEL_DIR environment variable is not set.")
 
-    # Construct full path to the deployed MLflow model
-    #   - The subdirectory name matches the deployed model folder
-    model_path = os.path.join(model_dir, "iris_mlflow_model")
+    # Resolve the deployed MLflow model path.
+    model_path = _resolve_model_path(model_dir)
 
     logger.info("AZUREML_MODEL_DIR: %s", model_dir)
     logger.info("Resolved MLflow model path: %s", model_path)
@@ -98,10 +163,22 @@ def init() -> None:
     # Load the MLflow model using the generic pyfunc interface
     model = mlflow.pyfunc.load_model(model_path)
 
+    # Instantiate Azure ML data collectors for production monitoring.
+    # The names `model_inputs` and `model_outputs` let Azure ML model
+    # monitoring auto-detect the collected datasets more easily.
+    inputs_collector = Collector(
+        name="model_inputs",
+        on_error=_log_collection_error,
+    )
+    outputs_collector = Collector(
+        name="model_outputs",
+        on_error=_log_collection_error,
+    )
+
     logger.info("Model loaded successfully")
 
 
-def run(raw_data: str) -> dict:
+def run(raw_data: str) -> dict[str, Any]:
     """
     Run model inference on incoming JSON request data.
 
@@ -246,6 +323,9 @@ def run(raw_data: str) -> dict:
                 "Each entry in 'data' must use the same format: all lists or all objects."
             )
 
+        # Collect the model input rows for Azure ML monitoring.
+        context = inputs_collector.collect(df)
+
         # Generate predictions
         preds = model.predict(df)
 
@@ -255,6 +335,16 @@ def run(raw_data: str) -> dict:
             CLASS_LABELS.get(int(pred), str(pred))
             for pred in prediction_list
         ]
+
+        output_df = pd.DataFrame(
+            {
+                "prediction": prediction_list,
+                "predicted_label": predicted_labels,
+            }
+        )
+
+        # Collect the correlated model outputs for Azure ML monitoring.
+        outputs_collector.collect(output_df, context)
 
         # Return prediction results
         return {
