@@ -94,30 +94,50 @@ def save_classification_report_heatmap(
     plot_df = report_df.loc[
         [index for index in report_df.index if index != "accuracy"],
         ["precision", "recall", "f1-score", "support"],
-    ]
+    ].copy()
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.imshow(plot_df.to_numpy(dtype=float), cmap="YlGnBu", aspect="auto")
-    ax.set_xticks(np.arange(len(plot_df.columns)))
-    ax.set_xticklabels(plot_df.columns)
-    ax.set_yticks(np.arange(len(plot_df.index)))
-    ax.set_yticklabels(plot_df.index)
-    ax.set_title("Classification Report")
+    # Format values as strings so support remains readable and integer-like.
+    formatted_df = plot_df.copy()
+    for column in ["precision", "recall", "f1-score"]:
+        formatted_df[column] = formatted_df[column].map(lambda value: f"{value:.2f}")
+    formatted_df["support"] = formatted_df["support"].map(lambda value: f"{int(value)}")
 
-    for row_idx in range(plot_df.shape[0]):
-        for col_idx in range(plot_df.shape[1]):
-            value = plot_df.iat[row_idx, col_idx]
-            ax.text(
-                col_idx,
-                row_idx,
-                f"{value:.2f}",
-                ha="center",
-                va="center",
-                color="black",
-            )
+    fig_height = 1.6 + 0.55 * len(formatted_df.index)
+    fig, ax = plt.subplots(figsize=(8.5, fig_height))
+    ax.axis("off")
+    ax.set_title("Classification Report", pad=16)
+
+    table = ax.table(
+        cellText=formatted_df.values,
+        rowLabels=formatted_df.index,
+        colLabels=formatted_df.columns,
+        cellLoc="center",
+        rowLoc="center",
+        loc="center",
+    )
+
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1.15, 1.8)
+
+    # Apply simple styling for readability instead of a heatmap.
+    for (row, col), cell in table.get_celld().items():
+        cell.set_edgecolor("#B8C4D3")
+        cell.set_linewidth(0.8)
+
+        if row == 0:
+            cell.set_facecolor("#DCEBFA")
+            cell.set_text_props(weight="bold", color="#1F2937")
+        elif col == -1:
+            cell.set_facecolor("#F3F4F6")
+            cell.set_text_props(weight="bold", color="#111827")
+        elif row % 2 == 0:
+            cell.set_facecolor("#FAFAFA")
+        else:
+            cell.set_facecolor("#FFFFFF")
 
     fig.tight_layout()
-    fig.savefig(output_path, dpi=200)
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
