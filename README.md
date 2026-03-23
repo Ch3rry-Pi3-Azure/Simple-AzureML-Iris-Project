@@ -419,6 +419,24 @@ If your workspace supports serverless jobs, you can submit immediately:
 ./scripts/pipeline/submit.sh
 ```
 
+By default the script:
+
+- submits the pipeline
+- waits for the run to finish
+- downloads the output artifacts into `outputs/azure_runs/...`
+
+If you want to disable waiting and return immediately after submission:
+
+```bash
+WAIT_FOR_COMPLETION=false AUTO_DOWNLOAD_OUTPUTS=false ./scripts/pipeline/submit.sh
+```
+
+If you want to wait for completion but skip the automatic download:
+
+```bash
+AUTO_DOWNLOAD_OUTPUTS=false ./scripts/pipeline/submit.sh
+```
+
 You can also submit the YAML directly:
 
 ```bash
