@@ -1,0 +1,59 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+display_name: iris_train_evaluate_pipeline
+description: Train and evaluate an Iris classifier as an Azure ML pipeline.
+
+inputs:
+  compute_name:
+    type: string
+    default: azureml:serverless
+  n_estimators:
+    type: integer
+    default: 100
+  max_depth:
+    type: integer
+    default: 4
+  model_random_state:
+    type: integer
+    default: 42
+  test_size:
+    type: number
+    default: 0.2
+  data_random_state:
+    type: integer
+    default: 5901
+
+outputs:
+  trained_model:
+    type: mlflow_model
+  train_metrics:
+    type: uri_folder
+  evaluation_report:
+    type: uri_folder
+
+jobs:
+  train_job:
+    type: command
+    component: ./components/train.yml
+    compute: ${{parent.inputs.compute_name}}
+    inputs:
+      n_estimators: ${{parent.inputs.n_estimators}}
+      max_depth: ${{parent.inputs.max_depth}}
+      model_random_state: ${{parent.inputs.model_random_state}}
+      test_size: ${{parent.inputs.test_size}}
+      data_random_state: ${{parent.inputs.data_random_state}}
+    outputs:
+      model_output: ${{parent.outputs.trained_model}}
+      metrics_output: ${{parent.outputs.train_metrics}}
+
+  evaluate_job:
+    type: command
+    component: ./components/evaluate.yml
+    compute: ${{parent.inputs.compute_name}}
+    inputs:
+      model_input: ${{parent.jobs.train_job.outputs.model_output}}
+      test_size: ${{parent.inputs.test_size}}
+      data_random_state: ${{parent.inputs.data_random_state}}
+    outputs:
+      evaluation_output: ${{parent.outputs.evaluation_report}}

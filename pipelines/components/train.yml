@@ -1,0 +1,45 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+
+name: iris_train_model
+display_name: Iris Train Model
+version: 1
+
+inputs:
+  n_estimators:
+    type: integer
+    default: 100
+  max_depth:
+    type: integer
+    default: 4
+  model_random_state:
+    type: integer
+    default: 42
+  test_size:
+    type: number
+    default: 0.2
+  data_random_state:
+    type: integer
+    default: 5901
+
+outputs:
+  model_output:
+    type: mlflow_model
+  metrics_output:
+    type: uri_folder
+
+code: ../../src
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+  conda_file: ../conda.yml
+
+command: >-
+  python pipeline_train.py
+  --model-output ${{outputs.model_output}}
+  --metrics-output ${{outputs.metrics_output}}
+  --n-estimators ${{inputs.n_estimators}}
+  --max-depth ${{inputs.max_depth}}
+  --model-random-state ${{inputs.model_random_state}}
+  --test-size ${{inputs.test_size}}
+  --data-random-state ${{inputs.data_random_state}}

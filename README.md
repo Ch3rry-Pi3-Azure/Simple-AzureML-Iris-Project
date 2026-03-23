@@ -34,6 +34,12 @@ Azure-AML-Iris/
 │   ├── deployment.yml
 │   ├── endpoint.yml
 │   └── sample-request.json
+├── pipelines/
+│   ├── conda.yml
+│   ├── train_evaluate.yml
+│   └── components/
+│       ├── evaluate.yml
+│       └── train.yml
 ├── scripts/
 │   ├── autoscale.sh
 │   ├── check-azureml.sh
@@ -43,14 +49,18 @@ Azure-AML-Iris/
 │   ├── get-key.sh
 │   ├── invoke-curl.sh
 │   ├── logs.sh
+│   ├── register-pipeline-components.sh
 │   ├── reset.sh
 │   ├── status.sh
+│   ├── submit-pipeline.sh
 │   └── test-endpoint.sh
 ├── src/
 │   ├── __init__.py
 │   ├── data.py
 │   ├── debug_artifacts.py
 │   ├── evaluate.py
+│   ├── pipeline_evaluate.py
+│   ├── pipeline_train.py
 │   ├── predict.py
 │   ├── register.py
 │   ├── score.py
@@ -93,6 +103,15 @@ Azure-AML-Iris/
 
 - `deployment/conda.yml`
   Defines the inference container environment used by Azure ML.
+
+- `pipelines/components/train.yml`
+  Defines the reusable Azure ML command component that trains the Iris model and emits an MLflow model output.
+
+- `pipelines/components/evaluate.yml`
+  Defines the reusable Azure ML command component that evaluates the trained model.
+
+- `pipelines/train_evaluate.yml`
+  Defines the Azure ML pipeline job that chains the training and evaluation components together.
 
 ## Azure Prerequisites
 
@@ -236,6 +255,99 @@ azureml:simple_iris_rf_model:1
 ```
 
 If you register a newer version, update `deployment/deployment.yml` accordingly before deployment.
+
+## Azure ML Pipelines
+
+This repository now includes a component-based Azure ML pipeline so you can start using the `Pipelines` asset in Azure ML Studio.
+
+The pipeline is designed to keep training and evaluation inside Azure ML while leaving endpoint deployment as a separate, controlled step.
+
+### What the Pipeline Does
+
+The pipeline in `pipelines/train_evaluate.yml` runs two jobs:
+
+1. `train_job`
+   Trains the Iris classifier and writes:
+   - an MLflow model output
+   - training metrics and reports
+
+2. `evaluate_job`
+   Loads the model output from `train_job`, recreates the deterministic test split, and writes evaluation reports.
+
+### What Appears in Azure ML Studio
+
+When you submit `pipelines/train_evaluate.yml`:
+
+- the run appears under the `Pipelines` section in Azure ML Studio
+- the child jobs appear under `Jobs`
+
+If you also register the components first, they will appear under the `Components` section:
+
+```bash
+./scripts/register-pipeline-components.sh
+```
+
+### Submit the Pipeline
+
+The pipeline defaults to:
+
+```text
+compute_name = azureml:serverless
+```
+
+If your workspace supports serverless jobs, you can submit immediately:
+
+```bash
+./scripts/submit-pipeline.sh
+```
+
+You can also submit the YAML directly:
+
+```bash
+az ml job create --file pipelines/train_evaluate.yml
+```
+
+If you want to use a named compute cluster instead, override the top-level input at submission time. For example:
+
+```bash
+az ml job create \
+  --file pipelines/train_evaluate.yml \
+  --set inputs.compute_name=azureml:cpu-cluster
+```
+
+### Pipeline Outputs
+
+The pipeline exposes three top-level outputs:
+
+- `trained_model`
+  MLflow model output from the training step
+
+- `train_metrics`
+  Training metrics and reports
+
+- `evaluation_report`
+  Evaluation metrics and reports
+
+This means the pipeline is now a clean upstream workflow for:
+
+- model training
+- model evaluation
+- later model registration
+- later endpoint deployment
+
+### Suggested Next Step
+
+The clean next extension is:
+
+1. run the Azure ML pipeline
+2. inspect the pipeline outputs in Studio
+3. register the pipeline-produced model as a model asset
+4. deploy a chosen registered model version to the online endpoint
+
+That gives you a clearer separation between:
+
+- ML workflow orchestration in `Pipelines`
+- model serving in `Endpoints`
 
 ## Managed Online Endpoint Deployment
 

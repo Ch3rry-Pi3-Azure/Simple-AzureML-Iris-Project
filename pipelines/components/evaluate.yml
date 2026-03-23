@@ -1,0 +1,33 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+
+name: iris_evaluate_model
+display_name: Iris Evaluate Model
+version: 1
+
+inputs:
+  model_input:
+    type: mlflow_model
+  test_size:
+    type: number
+    default: 0.2
+  data_random_state:
+    type: integer
+    default: 5901
+
+outputs:
+  evaluation_output:
+    type: uri_folder
+
+code: ../../src
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+  conda_file: ../conda.yml
+
+command: >-
+  python pipeline_evaluate.py
+  --model-input ${{inputs.model_input}}
+  --evaluation-output ${{outputs.evaluation_output}}
+  --test-size ${{inputs.test_size}}
+  --data-random-state ${{inputs.data_random_state}}
