@@ -1,11 +1,23 @@
 """
 Prepare a derived Iris feature-source dataset for Azure ML feature store work.
 
-This script discovers the existing Azure ML data asset when available,
-falls back to local or built-in Iris data otherwise, derives the
-feature-store-required entity and timestamp columns, uploads the result
-to ADLS Gen2, registers a derived Azure ML data asset, and writes local
-feature store scaffold YAML files for later registration.
+This script provides a pragmatic bridge between the repository's
+existing Azure ML data-asset setup and a future managed feature store
+workflow. It does not register feature store assets directly against a
+feature store workspace. Instead, it handles the preparatory work that
+is easy to automate inside the current project:
+
+1. discover the existing workspace data asset when available
+2. fall back to local or built-in Iris data when it is not
+3. derive synthetic entity and timestamp columns required for a useful
+   feature-store demonstration
+4. upload the derived dataset back to ADLS Gen2
+5. register the uploaded file as a new Azure ML data asset
+6. write local scaffold YAML files for later feature store registration
+
+Keeping this logic in a dedicated script makes the workflow repeatable
+without forcing the main training and deployment codepaths to take on
+feature-store-specific responsibilities.
 """
 
 from __future__ import annotations
@@ -15,6 +27,7 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+from typing import Any
 
 try:
     from .data import DEFAULT_LOCAL_DATA_PATH, load_dataset_frame
@@ -37,9 +50,33 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs" / "feature_store"
 DEFAULT_SCAFFOLD_DIR = PROJECT_ROOT / "featurestore" / "iris_demo"
 
 
-def _run_command(command: list[str], allow_failure: bool = False) -> subprocess.CompletedProcess:
+def _run_command(
+    command: list[str],
+    allow_failure: bool = False,
+) -> subprocess.CompletedProcess:
     """
     Run a subprocess command and optionally allow failure.
+
+    Parameters
+    ----------
+    command : list[str]
+        Command and arguments passed directly to ``subprocess.run``.
+
+    allow_failure : bool, default=False
+        Whether non-zero exit codes should be tolerated and returned to
+        the caller instead of raising an exception.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+        Completed subprocess result containing the return code plus the
+        captured standard output and standard error streams.
+
+    Raises
+    ------
+    RuntimeError
+        Raised when the command fails and ``allow_failure`` is
+        ``False``.
     """
 
     result = subprocess.run(
@@ -54,9 +91,28 @@ def _run_command(command: list[str], allow_failure: bool = False) -> subprocess.
     return result
 
 
-def _run_az_json(command_suffix: list[str], allow_failure: bool = False):
+def _run_az_json(
+    command_suffix: list[str],
+    allow_failure: bool = False,
+) -> Any:
     """
     Run an Azure CLI command that returns JSON output.
+
+    Parameters
+    ----------
+    command_suffix : list[str]
+        Azure CLI arguments appended after the leading ``az`` command.
+
+    allow_failure : bool, default=False
+        Whether Azure CLI failures should return ``None`` instead of
+        raising an exception.
+
+    Returns
+    -------
+    Any
+        Parsed JSON output from the Azure CLI command. When
+        ``allow_failure`` is ``True`` and the command fails, the
+        function returns ``None``.
     """
 
     result = _run_command(
@@ -71,6 +127,18 @@ def _run_az_json(command_suffix: list[str], allow_failure: bool = False):
 def _parse_azureml_datastore_path(path: str) -> tuple[str, str] | None:
     """
     Parse an Azure ML datastore URI into datastore name and relative path.
+
+    Parameters
+    ----------
+    path : str
+        Azure ML datastore URI of the form
+        ``azureml://datastores/<name>/paths/<relative-path>``.
+
+    Returns
+    -------
+    tuple[str, str] | None
+        Datastore name and relative path when the input matches the
+        expected Azure ML datastore URI shape, otherwise ``None``.
     """
 
     prefix = "azureml://datastores/"
@@ -87,6 +155,21 @@ def _parse_azureml_datastore_path(path: str) -> tuple[str, str] | None:
 def _get_next_data_asset_version(asset_name: str) -> str:
     """
     Determine the next numeric version for a workspace data asset.
+
+    Parameters
+    ----------
+    asset_name : str
+        Name of the Azure ML data asset container.
+
+    Returns
+    -------
+    str
+        Next numeric version represented as a string.
+
+    Notes
+    -----
+    - Non-numeric versions are ignored when calculating the next
+      automatic version number.
     """
 
     existing_assets = _run_az_json(
@@ -114,9 +197,33 @@ def _download_source_data_asset(
     source_asset_name: str,
     source_asset_version: str,
     temp_dir: Path,
-) -> tuple[Path, str, dict] | None:
+) -> tuple[Path, str, dict[str, Any]] | None:
     """
     Download a workspace data asset that points at an ADLS datastore file.
+
+    Parameters
+    ----------
+    source_asset_name : str
+        Name of the Azure ML data asset to inspect.
+
+    source_asset_version : str
+        Version of the Azure ML data asset to inspect.
+
+    temp_dir : Path
+        Temporary directory used to hold the downloaded source file.
+
+    Returns
+    -------
+    tuple[Path, str, dict[str, Any]] | None
+        Downloaded local file path, datastore name, and datastore
+        metadata when the source asset exists. Returns ``None`` when the
+        asset is not found.
+
+    Raises
+    ------
+    RuntimeError
+        Raised when the asset exists but does not point at an Azure ML
+        datastore-backed path of the expected form.
     """
 
     data_asset = _run_az_json(
@@ -148,6 +255,9 @@ def _download_source_data_asset(
     )
 
     destination = temp_dir / Path(relative_path).name
+
+    # Download the underlying ADLS file directly so the rest of the
+    # script can operate on a normal local CSV path.
     _run_command(
         [
             "az",
@@ -174,6 +284,13 @@ def _download_source_data_asset(
 def parse_args() -> argparse.Namespace:
     """
     Parse command-line arguments for feature-source preparation.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed command-line arguments describing the source asset,
+        fallback local path, output locations, datastore target, and
+        generated asset names.
     """
 
     parser = argparse.ArgumentParser()
@@ -199,6 +316,21 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """
     Prepare and register a derived feature-source dataset.
+
+    The function performs the following high-level steps:
+
+        1. resolves the best available source dataset
+        2. derives feature-store-friendly columns
+        3. writes the derived CSV locally
+        4. uploads the derived CSV to ADLS Gen2
+        5. registers the uploaded file as a new Azure ML data asset
+        6. writes local entity / feature-set scaffold files
+
+    Returns
+    -------
+    None
+        The function writes local files, uploads the derived dataset,
+        registers a data asset, and prints a compact summary.
     """
 
     args = parse_args()
@@ -213,6 +345,8 @@ def main() -> None:
             temp_dir=temp_dir,
         )
 
+        # Resolve the source dataset in descending preference order:
+        # Azure ML data asset, local CSV, then built-in scikit-learn data.
         if source_info is not None:
             source_path, source_datastore_name, source_datastore = source_info
             dataset = load_dataset_frame(data_path=source_path)
@@ -247,6 +381,9 @@ def main() -> None:
         else:
             target_datastore = source_datastore
 
+        # Upload the derived file back to ADLS so it can be registered
+        # as a normal Azure ML data asset and referenced later by the
+        # feature-store scaffold.
         _run_command(
             [
                 "az",
