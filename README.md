@@ -443,7 +443,15 @@ After the pipeline run finishes, get the job name:
 az ml job list -o table
 ```
 
-Then register the `trained_model` pipeline output:
+Then register the `trained_model` pipeline output.
+
+If you want the script to automatically use the latest pipeline run:
+
+```bash
+./scripts/model/register-from-job.sh
+```
+
+If you want to be explicit about the run:
 
 ```bash
 ./scripts/model/register-from-job.sh <PIPELINE_JOB_NAME>

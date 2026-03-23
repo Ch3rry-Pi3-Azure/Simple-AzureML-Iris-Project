@@ -8,6 +8,12 @@ JOB_NAME="${1:-${JOB_NAME:-}}"
 MODEL_NAME="${MODEL_NAME:-simple_iris_rf_model}"
 
 if [[ -z "$JOB_NAME" ]]; then
+  echo "No pipeline job name supplied. Looking up the latest pipeline job..."
+  JOB_NAME="$(az ml job list --query "[?properties.jobType=='Pipeline'] | sort_by(@, &creation_context.created_at)[-1].name" -o tsv)"
+fi
+
+if [[ -z "$JOB_NAME" || "$JOB_NAME" == "null" ]]; then
+  echo "Could not determine a pipeline job name."
   echo "Usage: ./scripts/model/register-from-job.sh <pipeline_job_name>"
   echo "Or set JOB_NAME=<pipeline_job_name> before running."
   exit 1
