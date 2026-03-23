@@ -45,7 +45,7 @@ def save_classification_report_heatmap(
     ]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    heatmap = ax.imshow(plot_df.to_numpy(dtype=float), cmap="YlGnBu", aspect="auto")
+    ax.imshow(plot_df.to_numpy(dtype=float), cmap="YlGnBu", aspect="auto")
     ax.set_xticks(np.arange(len(plot_df.columns)))
     ax.set_xticklabels(plot_df.columns)
     ax.set_yticks(np.arange(len(plot_df.index)))
@@ -64,7 +64,6 @@ def save_classification_report_heatmap(
                 color="black",
             )
 
-    fig.colorbar(heatmap, ax=ax, fraction=0.046, pad=0.04)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)

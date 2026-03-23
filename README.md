@@ -58,6 +58,7 @@ Azure-AML-Iris/
 │   ├── model/
 │   │   └── register-from-job.sh
 │   └── pipeline/
+│       ├── download-outputs.sh
 │       ├── register-components.sh
 │       └── submit.sh
 ├── src/
@@ -318,14 +319,18 @@ This will:
 
 - load the Iris dataset
 - split the data
-- train a Random Forest classifier
+- run a `GridSearchCV` over a Random Forest classifier
+- refit the best estimator on the training split
 - log metrics to MLflow
 - save the model locally to `outputs/iris_mlflow_model`
 - save dated local run artifacts under `outputs/local_runs/<YYYY-MM-DD>/<HHMMSS>_<RUN_ID>/`
 
 The local run artifact folder includes:
 
+- `best_params.json`
 - `metrics.json`
+- `cv_results.csv`
+- `grid_search_summary.json`
 - `classification_report.txt`
 - `classification_report.json`
 - `classification_report.png`
@@ -377,7 +382,7 @@ The pipeline is designed to keep training and evaluation inside Azure ML while l
 The pipeline in `pipelines/train_evaluate.yml` runs two jobs:
 
 1. `train_job`
-   Trains the Iris classifier and writes:
+   Runs `GridSearchCV`, trains the best Iris classifier, and writes:
    - an MLflow model output
    - training metrics and reports
 
@@ -460,6 +465,37 @@ If you update a component definition or the Python code used by a component, rer
 
 before submitting the pipeline again, so the workspace gets a new component version and `@latest` resolves to the new one.
 
+### Download Pipeline Artifacts Locally
+
+If you want the Azure ML pipeline outputs mirrored into the repo locally, download them into:
+
+```text
+outputs/azure_runs/<YYYY-MM-DD>/<PIPELINE_JOB_NAME>/
+```
+
+Use:
+
+```bash
+./scripts/pipeline/download-outputs.sh
+```
+
+This defaults to the latest pipeline job. You can also be explicit:
+
+```bash
+./scripts/pipeline/download-outputs.sh <PIPELINE_JOB_NAME>
+```
+
+By default it downloads:
+
+- `train_metrics`
+- `evaluation_report`
+
+If you also want the pipeline model output downloaded locally:
+
+```bash
+INCLUDE_MODEL_OUTPUT=true ./scripts/pipeline/download-outputs.sh <PIPELINE_JOB_NAME>
+```
+
 ### Pipeline Outputs
 
 The pipeline exposes three top-level outputs:
@@ -482,6 +518,9 @@ The key logged metrics are:
 
 The pipeline output folders also now include richer artifacts such as:
 
+- `best_params.json`
+- `cv_results.csv`
+- `grid_search_summary.json`
 - `classification_report.txt`
 - `classification_report.json`
 - `classification_report.png`
@@ -494,6 +533,14 @@ The training step additionally writes:
 - `learning_curve.png`
 
 For this project, a true training/loss curve is not included because the model is a Random Forest classifier rather than an iterative optimizer-based model. A learning curve is a better fit here.
+
+The ROC plot is a multiclass one-vs-rest chart:
+
+- one curve for `setosa` vs the other two classes
+- one curve for `versicolor` vs the other two classes
+- one curve for `virginica` vs the other two classes
+
+So the single `roc_curve.png` file contains three ROC curves, one for each class.
 
 This means the pipeline is now a clean upstream workflow for:
 

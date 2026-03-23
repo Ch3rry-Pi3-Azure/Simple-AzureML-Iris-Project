@@ -19,23 +19,27 @@ from pathlib import Path
 
 import mlflow
 import mlflow.sklearn
+import pandas as pd
 from mlflow.models import infer_signature
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
     from .artifact_names import (
+        BEST_PARAMS_JSON,
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
         CLASSIFICATION_REPORT_TXT,
         CONFUSION_MATRIX_JSON,
         CONFUSION_MATRIX_PNG,
+        CV_RESULTS_CSV,
+        GRID_SEARCH_SUMMARY_JSON,
         LEARNING_CURVE_PNG,
         METRICS_JSON,
         ROC_CURVE_PNG,
     )
     from .data import load_data
     from .evaluate import evaluate_model
+    from .modeling import run_grid_search
     from .visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -44,17 +48,21 @@ try:
     )
 except ImportError:
     from artifact_names import (
+        BEST_PARAMS_JSON,
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
         CLASSIFICATION_REPORT_TXT,
         CONFUSION_MATRIX_JSON,
         CONFUSION_MATRIX_PNG,
+        CV_RESULTS_CSV,
+        GRID_SEARCH_SUMMARY_JSON,
         LEARNING_CURVE_PNG,
         METRICS_JSON,
         ROC_CURVE_PNG,
     )
     from data import load_data
     from evaluate import evaluate_model
+    from modeling import run_grid_search
     from visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -128,24 +136,18 @@ def train_model() -> None:
     # Load training and test data
     X_train, X_test, y_train, y_test = load_data()
 
-    # Define model hyperparameters
-    #   - These are kept explicit to make logging and later adjustment easier
-    n_estimators = 100
-    max_depth = 4
     random_state = 5901
 
     # Start an MLflow run to track this training session
     with mlflow.start_run() as run:
-
-        # Initialise the Random Forest classifier
-        model = RandomForestClassifier(
-            n_estimators=n_estimators,
-            max_depth=max_depth,
+        search = run_grid_search(
+            X_train=X_train,
+            y_train=y_train,
             random_state=random_state,
         )
-
-        # Fit the model on the training data
-        model.fit(X_train, y_train)
+        model = search.best_estimator_
+        best_params = search.best_params_
+        best_cv_score = float(search.best_score_)
 
         # Evaluate model performance on the held-out test data
         results = evaluate_model(model, X_test, y_test)
@@ -163,13 +165,16 @@ def train_model() -> None:
         input_example = X_train.head(1)
 
         # Log model configuration parameters
-        mlflow.log_param("model_type", "RandomForestClassifier")
-        mlflow.log_param("n_estimators", n_estimators)
-        mlflow.log_param("max_depth", max_depth)
+        mlflow.log_param("model_type", "RandomForestClassifier + GridSearchCV")
+        mlflow.log_param("best_n_estimators", best_params["n_estimators"])
+        mlflow.log_param("best_max_depth", best_params["max_depth"])
+        mlflow.log_param("best_min_samples_split", best_params["min_samples_split"])
+        mlflow.log_param("best_min_samples_leaf", best_params["min_samples_leaf"])
         mlflow.log_param("random_state", random_state)
 
         # Log core evaluation metrics
         mlflow.log_metric("accuracy", results["accuracy"])
+        mlflow.log_metric("best_cv_score", best_cv_score)
 
         # Log additional weighted metrics
         #   - Weighted averaging accounts for class support
@@ -205,11 +210,7 @@ def train_model() -> None:
             output_path=run_output_dir / CLASSIFICATION_REPORT_PNG,
         )
         save_learning_curve_plot(
-            estimator=RandomForestClassifier(
-                n_estimators=n_estimators,
-                max_depth=max_depth,
-                random_state=random_state,
-            ),
+            estimator=model,
             X=X_train,
             y=y_train,
             output_path=run_output_dir / LEARNING_CURVE_PNG,
@@ -223,14 +224,37 @@ def train_model() -> None:
             "train_auc_setosa": auc_scores["auc_setosa"],
             "train_auc_versicolor": auc_scores["auc_versicolor"],
             "train_auc_virginica": auc_scores["auc_virginica"],
-            "n_estimators": n_estimators,
-            "max_depth": max_depth,
+            "best_n_estimators": best_params["n_estimators"],
+            "best_max_depth": best_params["max_depth"],
+            "best_min_samples_split": best_params["min_samples_split"],
+            "best_min_samples_leaf": best_params["min_samples_leaf"],
+            "best_cv_score": best_cv_score,
             "random_state": random_state,
             "run_id": run.info.run_id,
         }
 
         (run_output_dir / METRICS_JSON).write_text(
             json.dumps(local_metrics, indent=2),
+            encoding="utf-8",
+        )
+        (run_output_dir / BEST_PARAMS_JSON).write_text(
+            json.dumps(best_params, indent=2),
+            encoding="utf-8",
+        )
+        pd.DataFrame(search.cv_results_).to_csv(
+            run_output_dir / CV_RESULTS_CSV,
+            index=False,
+        )
+        (run_output_dir / GRID_SEARCH_SUMMARY_JSON).write_text(
+            json.dumps(
+                {
+                    "best_params": best_params,
+                    "best_cv_score": best_cv_score,
+                    "scoring": "accuracy",
+                    "cv_folds": 5,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
         (run_output_dir / CLASSIFICATION_REPORT_TXT).write_text(
@@ -261,6 +285,8 @@ def train_model() -> None:
         print("Run completed.")
         print(f"Run ID: {run.info.run_id}")
         print(f"Accuracy: {results['accuracy']:.4f}")
+        print(f"Best CV Score: {best_cv_score:.4f}")
+        print(f"Best Params: {best_params}")
         print(f"Local MLflow model saved to: {LOCAL_MODEL_DIR.resolve()}")
         print(f"Local run artifacts saved to: {run_output_dir.resolve()}")
 

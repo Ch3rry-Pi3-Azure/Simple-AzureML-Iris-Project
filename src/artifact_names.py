@@ -3,6 +3,9 @@ Shared artifact filenames used by the pipeline steps.
 """
 
 METRICS_JSON = "metrics.json"
+BEST_PARAMS_JSON = "best_params.json"
+CV_RESULTS_CSV = "cv_results.csv"
+GRID_SEARCH_SUMMARY_JSON = "grid_search_summary.json"
 CLASSIFICATION_REPORT_TXT = "classification_report.txt"
 CLASSIFICATION_REPORT_JSON = "classification_report.json"
 CONFUSION_MATRIX_JSON = "confusion_matrix.json"

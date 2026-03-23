@@ -15,23 +15,27 @@ from pathlib import Path
 
 import mlflow
 import mlflow.sklearn
+import pandas as pd
 from mlflow.models import infer_signature
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 try:
     from .artifact_names import (
+        BEST_PARAMS_JSON,
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
         CLASSIFICATION_REPORT_TXT,
         CONFUSION_MATRIX_JSON,
         CONFUSION_MATRIX_PNG,
+        CV_RESULTS_CSV,
+        GRID_SEARCH_SUMMARY_JSON,
         LEARNING_CURVE_PNG,
         METRICS_JSON,
         ROC_CURVE_PNG,
     )
     from .data import load_data
     from .evaluate import evaluate_model
+    from .modeling import run_grid_search
     from .visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -40,17 +44,21 @@ try:
     )
 except ImportError:
     from artifact_names import (
+        BEST_PARAMS_JSON,
         CLASSIFICATION_REPORT_JSON,
         CLASSIFICATION_REPORT_PNG,
         CLASSIFICATION_REPORT_TXT,
         CONFUSION_MATRIX_JSON,
         CONFUSION_MATRIX_PNG,
+        CV_RESULTS_CSV,
+        GRID_SEARCH_SUMMARY_JSON,
         LEARNING_CURVE_PNG,
         METRICS_JSON,
         ROC_CURVE_PNG,
     )
     from data import load_data
     from evaluate import evaluate_model
+    from modeling import run_grid_search
     from visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -63,8 +71,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-output", required=True)
     parser.add_argument("--metrics-output", required=True)
-    parser.add_argument("--n-estimators", type=int, default=100)
-    parser.add_argument("--max-depth", type=int, default=4)
     parser.add_argument("--model-random-state", type=int, default=5901)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--data-random-state", type=int, default=5901)
@@ -85,16 +91,18 @@ def main() -> None:
         random_state=args.data_random_state,
     )
 
-    model = RandomForestClassifier(
-        n_estimators=args.n_estimators,
-        max_depth=args.max_depth,
+    search = run_grid_search(
+        X_train=X_train,
+        y_train=y_train,
         random_state=args.model_random_state,
     )
-    model.fit(X_train, y_train)
+    model = search.best_estimator_
 
     results = evaluate_model(model, X_test, y_test)
     predictions = results["predictions"]
     probabilities = model.predict_proba(X_test)
+    best_params = search.best_params_
+    best_cv_score = float(search.best_score_)
 
     metrics = {
         "accuracy": results["accuracy"],
@@ -113,8 +121,11 @@ def main() -> None:
             predictions,
             average="weighted",
         ),
-        "n_estimators": args.n_estimators,
-        "max_depth": args.max_depth,
+        "best_n_estimators": best_params["n_estimators"],
+        "best_max_depth": best_params["max_depth"],
+        "best_min_samples_split": best_params["min_samples_split"],
+        "best_min_samples_leaf": best_params["min_samples_leaf"],
+        "best_cv_score": best_cv_score,
         "model_random_state": args.model_random_state,
         "test_size": args.test_size,
         "data_random_state": args.data_random_state,
@@ -122,8 +133,11 @@ def main() -> None:
 
     mlflow.log_params(
         {
-            "n_estimators": args.n_estimators,
-            "max_depth": args.max_depth,
+            "search_strategy": "GridSearchCV",
+            "best_n_estimators": best_params["n_estimators"],
+            "best_max_depth": best_params["max_depth"],
+            "best_min_samples_split": best_params["min_samples_split"],
+            "best_min_samples_leaf": best_params["min_samples_leaf"],
             "model_random_state": args.model_random_state,
             "test_size": args.test_size,
             "data_random_state": args.data_random_state,
@@ -135,6 +149,7 @@ def main() -> None:
             "train_precision_weighted": metrics["precision_weighted"],
             "train_recall_weighted": metrics["recall_weighted"],
             "train_f1_weighted": metrics["f1_weighted"],
+            "train_best_cv_score": best_cv_score,
         }
     )
 
@@ -160,11 +175,7 @@ def main() -> None:
         output_path=metrics_output / CLASSIFICATION_REPORT_PNG,
     )
     save_learning_curve_plot(
-        estimator=RandomForestClassifier(
-            n_estimators=args.n_estimators,
-            max_depth=args.max_depth,
-            random_state=args.model_random_state,
-        ),
+        estimator=model,
         X=X_train,
         y=y_train,
         output_path=metrics_output / LEARNING_CURVE_PNG,
@@ -182,6 +193,26 @@ def main() -> None:
 
     (metrics_output / METRICS_JSON).write_text(
         json.dumps(metrics, indent=2),
+        encoding="utf-8",
+    )
+    (metrics_output / BEST_PARAMS_JSON).write_text(
+        json.dumps(best_params, indent=2),
+        encoding="utf-8",
+    )
+    pd.DataFrame(search.cv_results_).to_csv(
+        metrics_output / CV_RESULTS_CSV,
+        index=False,
+    )
+    (metrics_output / GRID_SEARCH_SUMMARY_JSON).write_text(
+        json.dumps(
+            {
+                "best_params": best_params,
+                "best_cv_score": best_cv_score,
+                "scoring": "accuracy",
+                "cv_folds": 5,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
     (metrics_output / CLASSIFICATION_REPORT_TXT).write_text(
