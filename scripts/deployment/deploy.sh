@@ -22,10 +22,13 @@ fi
 MODEL_REF="azureml:${MODEL_NAME}:${MODEL_VERSION}"
 
 echo "Using deployment name '$DEPLOYMENT_NAME' under endpoint '$ENDPOINT_NAME'."
-echo "Creating endpoint if needed..."
-
-az ml online-endpoint create \
-  --file "$PROJECT_ROOT/deployment/endpoint.yml"
+if az ml online-endpoint show --name "$ENDPOINT_NAME" >/dev/null 2>&1; then
+  echo "Endpoint '$ENDPOINT_NAME' already exists. Reusing it."
+else
+  echo "Creating endpoint..."
+  az ml online-endpoint create \
+    --file "$PROJECT_ROOT/deployment/endpoint.yml"
+fi
 
 
 echo "Creating or updating deployment..."
