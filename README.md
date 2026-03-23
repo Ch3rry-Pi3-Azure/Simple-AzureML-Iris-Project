@@ -526,6 +526,8 @@ Notes:
 - drift and quality signals are only useful after the endpoint has seen production traffic
 - this does not replace endpoint health checks or container logs
 - this is not yet ground-truth performance monitoring
+- if a monitor run stays queued for a long time, the usual issue is Azure serverless Spark capacity or quota rather than your endpoint code
+- the checked-in monitor YAML now uses `standard_e8s_v3` as the Spark instance type because it can be a more practical retry target than `standard_e4s_v3` for stuck serverless runs
 - once monitor creation is stable in your workspace, the schedule can be expanded later with explicit custom signals and thresholds
 
 </details>

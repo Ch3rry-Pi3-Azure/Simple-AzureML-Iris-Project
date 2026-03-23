@@ -34,8 +34,10 @@ trigger:
 create_monitor:
   compute:
     # Spark-backed compute used by the monitor jobs.
-    instance_type: standard_e4s_v3
-    runtime_version: "3.4"
+    # E8s_v3 is still a supported monitor size and tends to be a more
+    # practical retry target when smaller serverless Spark runs sit
+    # queued for a long time.
+    instance_type: standard_e8s_v3
 
   monitoring_target:
     ml_task: classification
