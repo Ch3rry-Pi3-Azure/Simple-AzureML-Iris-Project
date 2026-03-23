@@ -4,25 +4,15 @@ type: pipeline
 display_name: iris_train_evaluate_pipeline
 description: Train and evaluate an Iris classifier as an Azure ML pipeline.
 
+settings:
+  default_compute: azureml:serverless
+
 inputs:
-  compute_name:
-    type: string
-    default: azureml:serverless
-  n_estimators:
-    type: integer
-    default: 100
-  max_depth:
-    type: integer
-    default: 4
-  model_random_state:
-    type: integer
-    default: 42
-  test_size:
-    type: number
-    default: 0.2
-  data_random_state:
-    type: integer
-    default: 5901
+  n_estimators: 100
+  max_depth: 4
+  model_random_state: 42
+  test_size: 0.2
+  data_random_state: 5901
 
 outputs:
   trained_model:
@@ -36,7 +26,6 @@ jobs:
   train_job:
     type: command
     component: ./components/train.yml
-    compute: ${{parent.inputs.compute_name}}
     inputs:
       n_estimators: ${{parent.inputs.n_estimators}}
       max_depth: ${{parent.inputs.max_depth}}
@@ -50,7 +39,6 @@ jobs:
   evaluate_job:
     type: command
     component: ./components/evaluate.yml
-    compute: ${{parent.inputs.compute_name}}
     inputs:
       model_input: ${{parent.jobs.train_job.outputs.model_output}}
       test_size: ${{parent.inputs.test_size}}

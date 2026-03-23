@@ -383,7 +383,7 @@ If you also register the components first, they will appear under the `Component
 The pipeline defaults to:
 
 ```text
-compute_name = azureml:serverless
+settings.default_compute = azureml:serverless
 ```
 
 If your workspace supports serverless jobs, you can submit immediately:
@@ -398,12 +398,12 @@ You can also submit the YAML directly:
 az ml job create --file pipelines/train_evaluate.yml
 ```
 
-If you want to use a named compute cluster instead, override the top-level input at submission time. For example:
+If you want to use a named compute cluster instead, override the pipeline default compute at submission time. For example:
 
 ```bash
 az ml job create \
   --file pipelines/train_evaluate.yml \
-  --set inputs.compute_name=azureml:cpu-cluster
+  --set settings.default_compute=azureml:cpu-cluster
 ```
 
 ### Pipeline Outputs
