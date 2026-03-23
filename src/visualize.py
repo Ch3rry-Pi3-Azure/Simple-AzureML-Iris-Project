@@ -13,6 +13,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import ConfusionMatrixDisplay, auc, roc_curve
 from sklearn.model_selection import learning_curve
 from sklearn.preprocessing import label_binarize
@@ -123,6 +124,49 @@ def save_learning_curve_plot(
     ax.set_ylabel("Accuracy")
     ax.set_title("Learning Curve")
     ax.legend(loc="best")
+    ax.grid(True, linestyle="--", alpha=0.4)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def save_oob_error_curve(
+    X,
+    y,
+    output_path: Path,
+    best_params: dict,
+    random_state: int,
+) -> None:
+    target_n_estimators = int(best_params["n_estimators"])
+    step = max(5, target_n_estimators // 10)
+    estimator_steps = list(range(step, target_n_estimators + 1, step))
+
+    if estimator_steps[-1] != target_n_estimators:
+        estimator_steps.append(target_n_estimators)
+
+    forest = RandomForestClassifier(
+        n_estimators=0,
+        warm_start=True,
+        oob_score=True,
+        bootstrap=True,
+        random_state=random_state,
+        max_depth=best_params["max_depth"],
+        min_samples_split=best_params["min_samples_split"],
+        min_samples_leaf=best_params["min_samples_leaf"],
+    )
+
+    oob_errors = []
+
+    for n_estimators in estimator_steps:
+        forest.set_params(n_estimators=n_estimators)
+        forest.fit(X, y)
+        oob_errors.append(1 - forest.oob_score_)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(estimator_steps, oob_errors, marker="o")
+    ax.set_xlabel("Number of Trees")
+    ax.set_ylabel("OOB Error")
+    ax.set_title("Out-of-Bag Error Curve")
     ax.grid(True, linestyle="--", alpha=0.4)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)

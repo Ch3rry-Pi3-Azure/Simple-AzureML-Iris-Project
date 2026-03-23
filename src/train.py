@@ -35,6 +35,7 @@ try:
         GRID_SEARCH_SUMMARY_JSON,
         LEARNING_CURVE_PNG,
         METRICS_JSON,
+        OOB_ERROR_CURVE_PNG,
         ROC_CURVE_PNG,
     )
     from .data import load_data
@@ -44,6 +45,7 @@ try:
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
         save_learning_curve_plot,
+        save_oob_error_curve,
         save_multiclass_roc_curve,
     )
 except ImportError:
@@ -58,6 +60,7 @@ except ImportError:
         GRID_SEARCH_SUMMARY_JSON,
         LEARNING_CURVE_PNG,
         METRICS_JSON,
+        OOB_ERROR_CURVE_PNG,
         ROC_CURVE_PNG,
     )
     from data import load_data
@@ -67,6 +70,7 @@ except ImportError:
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
         save_learning_curve_plot,
+        save_oob_error_curve,
         save_multiclass_roc_curve,
     )
 
@@ -214,6 +218,13 @@ def train_model() -> None:
             X=X_train,
             y=y_train,
             output_path=run_output_dir / LEARNING_CURVE_PNG,
+        )
+        save_oob_error_curve(
+            X=X_train,
+            y=y_train,
+            output_path=run_output_dir / OOB_ERROR_CURVE_PNG,
+            best_params=best_params,
+            random_state=random_state,
         )
 
         local_metrics = {

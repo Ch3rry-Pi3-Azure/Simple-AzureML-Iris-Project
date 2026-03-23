@@ -338,6 +338,7 @@ The local run artifact folder includes:
 - `confusion_matrix.png`
 - `roc_curve.png`
 - `learning_curve.png`
+- `oob_error_curve.png`
 
 ### 2. Run a Local Prediction Check
 
@@ -531,8 +532,12 @@ The pipeline output folders also now include richer artifacts such as:
 The training step additionally writes:
 
 - `learning_curve.png`
+- `oob_error_curve.png`
 
-For this project, a true training/loss curve is not included because the model is a Random Forest classifier rather than an iterative optimizer-based model. A learning curve is a better fit here.
+For this project, a true training/loss curve is not included because the model is a Random Forest classifier rather than an iterative optimizer-based model. Better fits here are:
+
+- `learning_curve.png`
+- `oob_error_curve.png`
 
 The ROC plot is a multiclass one-vs-rest chart:
 
