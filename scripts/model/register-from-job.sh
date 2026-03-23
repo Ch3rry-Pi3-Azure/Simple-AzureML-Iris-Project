@@ -9,7 +9,7 @@ MODEL_NAME="${MODEL_NAME:-simple_iris_rf_model}"
 
 if [[ -z "$JOB_NAME" ]]; then
   echo "No pipeline job name supplied. Looking up the latest pipeline job..."
-  JOB_NAME="$(az ml job list --query "[?properties.jobType=='Pipeline'] | sort_by(@, &creation_context.created_at)[-1].name" -o tsv)"
+  JOB_NAME="$(az ml job list --query "sort_by([?type=='pipeline'], &creation_context.created_at)[-1].name" -o tsv)"
 fi
 
 if [[ -z "$JOB_NAME" || "$JOB_NAME" == "null" ]]; then
