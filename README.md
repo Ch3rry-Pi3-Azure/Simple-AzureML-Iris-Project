@@ -21,6 +21,7 @@ This repository covers:
 - [Windows Azure CLI Setup](#windows-azure-cli-setup)
 - [Git And GitHub Setup](#git-and-github-setup)
 - [Local Workflow](#local-workflow)
+- [GitHub Actions CI/CD](#github-actions-cicd)
 - [ADLS Datastore And Data Asset Setup](#adls-datastore-and-data-asset-setup)
 - [Feature Store Prep](#feature-store-prep)
 - [Azure ML Pipeline Workflow](#azure-ml-pipeline-workflow)
@@ -402,6 +403,56 @@ Notes on plots:
 - `roc_curve.png` is multiclass one-vs-rest, so it contains three curves
 - a true loss-vs-iteration plot is not included because the deployed model is a `RandomForestClassifier`
 - the more appropriate training progression plots here are `learning_curve.png` and `oob_error_curve.png`
+
+</details>
+
+## GitHub Actions CI/CD
+
+<details>
+<summary>Show or hide section</summary>
+
+The repository now includes two GitHub Actions workflows under `.github/workflows/`:
+
+- `ci.yml`
+  runs on pushes to `main` and pull requests targeting `main`; installs dependencies, compiles `src/` and `tests/`, and runs `pytest`
+- `cd-register-model.yml`
+  runs after a successful `CI` workflow on `main` or can be started manually; registers Azure ML components, submits the training pipeline, and registers the trained model from the resulting pipeline job
+
+The CD workflow intentionally stops after model registration. It does not deploy the online endpoint or run endpoint smoke tests.
+
+Required GitHub repository secrets for Azure OIDC login:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+Required GitHub repository or environment variables:
+
+- `AZURE_RESOURCE_GROUP`
+- `AZURE_ML_WORKSPACE`
+- `AZURE_LOCATION`
+
+Optional GitHub repository or environment variables:
+
+- `AZURE_ML_DATA_ASSET_NAME`
+  defaults to `iris_csv`
+- `AZURE_ML_DATA_ASSET_VERSION`
+  defaults to `1`
+- `AZURE_ML_REGISTERED_MODEL_NAME`
+  defaults to `simple_iris_rf_model`
+
+Recommended setup:
+
+1. create a GitHub environment such as `azureml-dev`
+2. add the Azure OIDC secrets to that environment
+3. add the Azure ML workspace variables to that environment
+4. create a federated credential in Azure AD for the repository/environment
+
+The CD workflow uses the same repo scripts you run manually:
+
+- `./scripts/pipeline/register-components.sh`
+- `./scripts/pipeline/submit.sh`
+- `./scripts/model/register-from-job.sh`
 
 </details>
 

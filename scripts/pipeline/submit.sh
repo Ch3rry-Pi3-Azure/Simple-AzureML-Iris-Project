@@ -15,6 +15,7 @@ POLL_SECONDS="${POLL_SECONDS:-15}"
 USE_DATA_ASSET="${USE_DATA_ASSET:-auto}"
 DATA_ASSET_NAME="${DATA_ASSET_NAME:-iris_csv}"
 DATA_ASSET_VERSION="${DATA_ASSET_VERSION:-1}"
+JOB_NAME_OUTPUT_FILE="${JOB_NAME_OUTPUT_FILE:-}"
 
 if [[ "$AUTO_DOWNLOAD_OUTPUTS" == "true" ]]; then
   WAIT_FOR_COMPLETION="true"
@@ -45,6 +46,11 @@ if [[ -z "$JOB_NAME" || "$JOB_NAME" == "null" ]]; then
 fi
 
 echo "Submitted pipeline job: $JOB_NAME"
+
+if [[ -n "$JOB_NAME_OUTPUT_FILE" ]]; then
+  mkdir -p "$(dirname "$JOB_NAME_OUTPUT_FILE")"
+  printf "%s\n" "$JOB_NAME" >"$JOB_NAME_OUTPUT_FILE"
+fi
 
 if [[ "$WAIT_FOR_COMPLETION" != "true" ]]; then
   exit 0

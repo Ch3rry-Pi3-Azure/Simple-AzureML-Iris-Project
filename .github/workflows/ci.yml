@@ -9,8 +9,8 @@
 #   1. checks out the repository
 #   2. sets up Python
 #   3. installs project dependencies
-#   4. installs the pytest test runner
-#   5. sets the project root on the Python path
+#   4. sets the project root on the Python path
+#   5. verifies the source tree compiles
 #   6. runs the test suite
 #
 # This provides a basic CI safety net so that small issues are
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Expose the repository root to Python so imports such as
-    # `from src.data import load_data` work correctly in tests
+    # `from src.core.data import load_data` work correctly in tests
     env:
       PYTHONPATH: .
 
@@ -51,12 +51,16 @@ jobs:
 
       # Install project dependencies
       #   - requirements.txt contains the main runtime packages
-      #   - pytest is installed separately for test execution
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
+
+      # Ensure the source tree is syntactically valid before tests run
+      - name: Compile source tree
+        run: |
+          python -m compileall src tests
 
       # Run the automated test suite
       - name: Run tests

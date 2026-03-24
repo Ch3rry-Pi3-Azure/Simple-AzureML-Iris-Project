@@ -1,0 +1,99 @@
+# ================================================================
+# Continuous Delivery Workflow: Azure ML Train And Register
+#
+# This workflow turns the repository's existing shell-scripted Azure ML
+# path into a GitHub Actions delivery pipeline. It intentionally stops
+# after model registration:
+#
+#   1. checks out the repository
+#   2. authenticates to Azure using OIDC
+#   3. installs the Azure ML CLI extension
+#   4. registers the pipeline components
+#   5. submits the Azure ML training pipeline and waits for completion
+#   6. registers the trained model from the resulting pipeline job
+#
+# Deployment and endpoint smoke tests are deliberately excluded from
+# this workflow so the project can keep a clear split between model
+# delivery and endpoint promotion.
+# ================================================================
+
+name: CD - Train And Register Model
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  train-and-register:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    environment: azureml-dev
+
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_ML_WORKSPACE: ${{ vars.AZURE_ML_WORKSPACE }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      DATA_ASSET_NAME: ${{ vars.AZURE_ML_DATA_ASSET_NAME || 'iris_csv' }}
+      DATA_ASSET_VERSION: ${{ vars.AZURE_ML_DATA_ASSET_VERSION || '1' }}
+      MODEL_NAME: ${{ vars.AZURE_ML_REGISTERED_MODEL_NAME || 'simple_iris_rf_model' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Azure ML CLI extension
+        run: |
+          az extension add -n ml --yes
+          az extension update -n ml
+
+      - name: Configure Azure ML defaults
+        run: |
+          az configure --defaults group="${AZURE_RESOURCE_GROUP}" workspace="${AZURE_ML_WORKSPACE}" location="${AZURE_LOCATION}"
+          az configure --list-defaults
+
+      - name: Register Azure ML components
+        run: |
+          chmod +x ./scripts/pipeline/register-components.sh
+          ./scripts/pipeline/register-components.sh
+
+      - name: Submit Azure ML pipeline
+        run: |
+          chmod +x ./scripts/pipeline/submit.sh
+          JOB_NAME_OUTPUT_FILE="$RUNNER_TEMP/pipeline_job_name.txt" \
+          USE_DATA_ASSET=true \
+          DATA_ASSET_NAME="${DATA_ASSET_NAME}" \
+          DATA_ASSET_VERSION="${DATA_ASSET_VERSION}" \
+          AUTO_DOWNLOAD_OUTPUTS=false \
+          ./scripts/pipeline/submit.sh
+
+      - name: Capture pipeline job name
+        id: pipeline-job
+        shell: bash
+        run: |
+          JOB_NAME="$(cat "$RUNNER_TEMP/pipeline_job_name.txt")"
+          echo "job_name=$JOB_NAME" >> "$GITHUB_OUTPUT"
+          echo "Submitted pipeline job: $JOB_NAME"
+
+      - name: Register trained model from pipeline output
+        run: |
+          chmod +x ./scripts/model/register-from-job.sh
+          MODEL_NAME="${MODEL_NAME}" ./scripts/model/register-from-job.sh "${{ steps.pipeline-job.outputs.job_name }}"
