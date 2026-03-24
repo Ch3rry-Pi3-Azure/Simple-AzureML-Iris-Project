@@ -24,6 +24,18 @@ fi
 
 echo "Deleting deployment '$DEPLOYMENT_NAME' from endpoint '$ENDPOINT_NAME'..."
 
+CURRENT_TRAFFIC_JSON="$(az ml online-endpoint show --name "$ENDPOINT_NAME" --query traffic -o json)"
+TARGET_TRAFFIC="$(CURRENT_TRAFFIC_JSON="$CURRENT_TRAFFIC_JSON" DEPLOYMENT_NAME="$DEPLOYMENT_NAME" python -c "import json, os; traffic=json.loads(os.environ['CURRENT_TRAFFIC_JSON']); print(int(traffic.get(os.environ['DEPLOYMENT_NAME'], 0)))")"
+
+if [[ "$TARGET_TRAFFIC" -gt 0 ]]; then
+  UPDATED_TRAFFIC="$(CURRENT_TRAFFIC_JSON="$CURRENT_TRAFFIC_JSON" DEPLOYMENT_NAME="$DEPLOYMENT_NAME" python -c "import json, os; traffic=json.loads(os.environ['CURRENT_TRAFFIC_JSON']); deployment=os.environ['DEPLOYMENT_NAME']; traffic.pop(deployment, None); print(' '.join(f'{key}={value}' for key, value in traffic.items()) if traffic else f'{deployment}=0')")"
+
+  echo "Deployment '$DEPLOYMENT_NAME' currently has live traffic. Resetting endpoint traffic before delete..."
+  az ml online-endpoint update \
+    --name "$ENDPOINT_NAME" \
+    --traffic "$UPDATED_TRAFFIC" >/dev/null
+fi
+
 az ml online-deployment delete \
   --endpoint-name "$ENDPOINT_NAME" \
   --name "$DEPLOYMENT_NAME" \

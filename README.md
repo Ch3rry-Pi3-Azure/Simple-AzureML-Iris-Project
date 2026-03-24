@@ -935,10 +935,11 @@ Destroy the deployment and then the endpoint:
 
 `cleanup.sh` now:
 
-1. deletes the named deployment first
-2. waits for Azure to fully remove the deployment
-3. deletes the endpoint
-4. waits for Azure to fully remove the endpoint
+1. removes traffic from the named deployment when needed
+2. deletes the named deployment
+3. waits for Azure to fully remove the deployment
+4. deletes the endpoint
+5. waits for Azure to fully remove the endpoint
 
 Reset from scratch:
 
