@@ -426,6 +426,11 @@ Required GitHub repository secrets for Azure OIDC login:
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
 
+These are identifiers used by the OIDC login flow. This repository's
+GitHub Actions workflow does **not** use an Azure client secret.
+Do not create or store `AZURE_CLIENT_SECRET` for this setup unless you
+intentionally change the workflow away from OIDC.
+
 Required GitHub repository or environment variables:
 
 - `AZURE_RESOURCE_GROUP`
@@ -447,6 +452,97 @@ Recommended setup:
 2. add the Azure OIDC secrets to that environment
 3. add the Azure ML workspace variables to that environment
 4. create a federated credential in Azure AD for the repository/environment
+
+The federated credential must use this subject format:
+
+```text
+repo:<OWNER>/<REPO>:environment:azureml-dev
+```
+
+For this repository, the value should be:
+
+```text
+repo:Ch3rry-Pi3-Azure/Simple-AzureML-Iris-Project:environment:azureml-dev
+```
+
+Use your own environment-specific values for:
+
+```text
+AZURE_CLIENT_ID=<your-app-registration-client-id>
+AZURE_TENANT_ID=<your-tenant-id>
+AZURE_SUBSCRIPTION_ID=<your-subscription-id>
+AZURE_RESOURCE_GROUP=<your-resource-group>
+AZURE_ML_WORKSPACE=<your-aml-workspace>
+AZURE_LOCATION=<your-region>
+```
+
+The federated credential should be configured like this for this
+repository/environment:
+
+```text
+name=github-azureml-dev
+issuer=https://token.actions.githubusercontent.com
+subject=repo:Ch3rry-Pi3-Azure/Simple-AzureML-Iris-Project:environment:azureml-dev
+audience=api://AzureADTokenExchange
+```
+
+Step 1. Create the Azure application identity:
+
+```powershell
+$APP_NAME = "github-azureml-simple-iris"
+$APP_ID = az ad app create --display-name $APP_NAME --query appId -o tsv
+az ad sp create --id $APP_ID
+az role assignment create --assignee $APP_ID --role Contributor --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP>
+```
+
+Step 2. Create the GitHub OIDC federated credential:
+
+```powershell
+@'
+{
+  "name": "github-azureml-dev",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:<OWNER>/<REPO>:environment:azureml-dev",
+  "description": "GitHub Actions OIDC for azureml-dev",
+  "audiences": [
+    "api://AzureADTokenExchange"
+  ]
+}
+'@ | Set-Content -Path .\github-federated-credential.json
+
+az ad app federated-credential create --id $APP_ID --parameters .\github-federated-credential.json
+```
+
+Step 3. Put the outputs into the GitHub environment:
+
+Environment secrets:
+
+- `AZURE_CLIENT_ID`
+  set this to the value stored in `$APP_ID`
+- `AZURE_TENANT_ID`
+  set this to your Azure tenant ID
+- `AZURE_SUBSCRIPTION_ID`
+  set this to your Azure subscription ID
+
+Environment variables:
+
+- `AZURE_RESOURCE_GROUP`
+- `AZURE_ML_WORKSPACE`
+- `AZURE_LOCATION`
+
+Optional environment variables:
+
+- `AZURE_ML_DATA_ASSET_NAME`
+- `AZURE_ML_DATA_ASSET_VERSION`
+- `AZURE_ML_REGISTERED_MODEL_NAME`
+
+For this project, the non-secret GitHub environment variables are:
+
+```text
+AZURE_RESOURCE_GROUP=azureml_rg
+AZURE_ML_WORKSPACE=azureml_test
+AZURE_LOCATION=westeurope
+```
 
 The CD workflow uses the same repo scripts you run manually:
 
