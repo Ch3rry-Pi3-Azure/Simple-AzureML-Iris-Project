@@ -27,8 +27,8 @@ JOB_CREATE_ARGS=(--file "$PIPELINE_FILE")
 if [[ "$USE_DATA_ASSET" != "false" ]]; then
   if az ml data show --name "$DATA_ASSET_NAME" --version "$DATA_ASSET_VERSION" >/dev/null 2>&1; then
     echo "Using Azure ML data asset: azureml:${DATA_ASSET_NAME}:${DATA_ASSET_VERSION}"
-    JOB_CREATE_ARGS+=(--set "jobs.train_job.inputs.data_input=azureml:${DATA_ASSET_NAME}:${DATA_ASSET_VERSION}")
-    JOB_CREATE_ARGS+=(--set "jobs.evaluate_job.inputs.data_input=azureml:${DATA_ASSET_NAME}:${DATA_ASSET_VERSION}")
+    JOB_CREATE_ARGS+=(--set "jobs.train_job.inputs.data_input.path=azureml:${DATA_ASSET_NAME}:${DATA_ASSET_VERSION}")
+    JOB_CREATE_ARGS+=(--set "jobs.evaluate_job.inputs.data_input.path=azureml:${DATA_ASSET_NAME}:${DATA_ASSET_VERSION}")
   elif [[ "$USE_DATA_ASSET" == "true" ]]; then
     echo "Required Azure ML data asset not found: azureml:${DATA_ASSET_NAME}:${DATA_ASSET_VERSION}"
     exit 1
