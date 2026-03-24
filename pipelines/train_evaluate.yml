@@ -35,11 +35,6 @@ settings:
 # Pipeline Inputs
 # ------------------------------------------------
 inputs:
-  # Optional Azure ML data asset reference for an external Iris CSV
-  data_input:
-    type: uri_file
-    optional: true
-
   # Random seed used by the model and search process
   model_random_state: 5901
 
@@ -76,7 +71,6 @@ jobs:
     component: azureml:iris_train_model@latest
 
     inputs:
-      data_input: ${{parent.inputs.data_input}}
       model_random_state: ${{parent.inputs.model_random_state}}
       test_size: ${{parent.inputs.test_size}}
       data_random_state: ${{parent.inputs.data_random_state}}
@@ -93,7 +87,6 @@ jobs:
 
     inputs:
       model_input: ${{parent.jobs.train_job.outputs.model_output}}
-      data_input: ${{parent.inputs.data_input}}
       test_size: ${{parent.inputs.test_size}}
       data_random_state: ${{parent.inputs.data_random_state}}
 
