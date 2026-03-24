@@ -217,13 +217,16 @@ def _download_source_data_asset(
     tuple[Path, str, dict[str, Any]] | None
         Downloaded local file path, datastore name, and datastore
         metadata when the source asset exists. Returns ``None`` when the
-        asset is not found.
+        asset is not found or when the asset exists but is backed by a
+        path shape that this helper cannot download directly.
 
-    Raises
-    ------
-    RuntimeError
-        Raised when the asset exists but does not point at an Azure ML
-        datastore-backed path of the expected form.
+    Notes
+    -----
+    - Some Azure ML workspaces surface data-asset paths as workspace
+      asset URIs rather than raw
+      ``azureml://datastores/<name>/paths/<relative-path>`` URIs. In
+      that case this helper returns ``None`` so the caller can fall
+      back to the repository-local CSV or to ``load_iris()``.
     """
 
     data_asset = _run_az_json(
@@ -244,10 +247,7 @@ def _download_source_data_asset(
     asset_path = data_asset.get("path", "")
     parsed_path = _parse_azureml_datastore_path(asset_path)
     if not parsed_path:
-        raise RuntimeError(
-            "Only azureml://datastores/.../paths/... data assets are supported by "
-            "src.feature_store.prepare_source"
-        )
+        return None
 
     datastore_name, relative_path = parsed_path
     datastore = _run_az_json(
