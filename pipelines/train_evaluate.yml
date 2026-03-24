@@ -66,6 +66,8 @@ outputs:
 jobs:
   train_job:
     type: command
+    identity:
+      type: user_identity
 
     # Registered component asset used for the training stage
     component: azureml:iris_train_model@latest
@@ -81,6 +83,8 @@ jobs:
 
   evaluate_job:
     type: command
+    identity:
+      type: user_identity
 
     # Registered component asset used for the evaluation stage
     component: azureml:iris_evaluate_model@latest
