@@ -27,8 +27,16 @@ import pandas as pd
 
 try:
     from ..core.data import FEATURE_COLUMNS
+    from ..core.features import (
+        DERIVED_FEATURE_COLUMNS,
+        add_derived_feature_columns,
+    )
 except ImportError:
     from core.data import FEATURE_COLUMNS
+    from core.features import (
+        DERIVED_FEATURE_COLUMNS,
+        add_derived_feature_columns,
+    )
 
 
 # Canonical column order used by the derived feature-source dataset.
@@ -36,6 +44,7 @@ FEATURE_SOURCE_COLUMNS = [
     "flower_id",
     "event_timestamp",
     *FEATURE_COLUMNS,
+    *DERIVED_FEATURE_COLUMNS,
     "species",
 ]
 
@@ -51,7 +60,8 @@ def build_feature_source_dataframe(dataset: pd.DataFrame) -> pd.DataFrame:
     2. a timestamp column for time-aware feature retrieval
 
     This helper derives those fields while preserving the original
-    canonical feature columns and the human-readable species label.
+    canonical feature columns, materialising the shared reusable
+    derived features, and keeping the human-readable species label.
 
     Parameters
     ----------
@@ -63,7 +73,8 @@ def build_feature_source_dataframe(dataset: pd.DataFrame) -> pd.DataFrame:
     -------
     pd.DataFrame
         DataFrame containing ``flower_id`` and ``event_timestamp``
-        alongside the original features and species label.
+        alongside the original raw features, the reusable derived
+        features, and the species label.
 
     Raises
     ------
@@ -92,6 +103,7 @@ def build_feature_source_dataframe(dataset: pd.DataFrame) -> pd.DataFrame:
     # Keep only the canonical dataset columns before deriving the
     # feature-store-specific entity and timestamp fields.
     feature_source = dataset[required_columns].copy().reset_index(drop=True)
+    feature_source = add_derived_feature_columns(feature_source)
     feature_source.insert(
         0,
         "event_timestamp",
@@ -214,7 +226,7 @@ def render_feature_set_yaml(
     return f"""$schema: http://azureml/sdk-2-0/Featureset.json
 name: {feature_set_name}
 version: "{feature_set_version}"
-description: Canonical Iris measurement features sourced from ADLS Gen2.
+description: Canonical Iris measurements plus reusable derived features sourced from ADLS Gen2.
 specification:
   path: {specification_path}
 entities:
@@ -248,7 +260,8 @@ def render_feature_set_spec_yaml(source_abfss_uri: str) -> str:
     - This repository uses a simple direct-source specification first.
       It avoids custom feature transformation code in the initial
       scaffold because the source data has already been pre-shaped by
-      the preparation script.
+      the preparation script and already includes the reusable derived
+      features.
     """
 
     return f"""$schema: http://azureml/sdk-2-0/FeatureSetSpec.json
@@ -266,6 +279,16 @@ features:
   - name: petal length (cm)
     type: double
   - name: petal width (cm)
+    type: double
+  - name: sepal length squared
+    type: double
+  - name: petal length squared
+    type: double
+  - name: sepal area (cm^2)
+    type: double
+  - name: petal area (cm^2)
+    type: double
+  - name: sepal length x petal length
     type: double
 index_columns:
   - name: flower_id

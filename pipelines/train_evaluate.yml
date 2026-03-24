@@ -44,6 +44,9 @@ inputs:
   # Random seed controlling the train/test data split
   data_random_state: 5901
 
+  # Whether the training preprocessing pipeline should apply scaling
+  use_scaling: false
+
 # ------------------------------------------------
 # Pipeline Outputs
 # ------------------------------------------------
@@ -76,6 +79,7 @@ jobs:
       model_random_state: ${{parent.inputs.model_random_state}}
       test_size: ${{parent.inputs.test_size}}
       data_random_state: ${{parent.inputs.data_random_state}}
+      use_scaling: ${{parent.inputs.use_scaling}}
 
     outputs:
       model_output: ${{parent.outputs.trained_model}}

@@ -40,7 +40,7 @@ try:
     )
     from ..core.data import load_data
     from ..core.evaluate import evaluate_model
-    from ..core.modeling import run_grid_search
+    from ..core.modeling import normalise_best_params, run_grid_search
     from ..core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -65,7 +65,7 @@ except ImportError:
     )
     from core.data import load_data
     from core.evaluate import evaluate_model
-    from core.modeling import run_grid_search
+    from core.modeling import normalise_best_params, run_grid_search
     from core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -81,6 +81,7 @@ EXPERIMENT_NAME = "simple_iris_demo"
 # Local directory where the trained MLflow model will be saved
 LOCAL_MODEL_DIR = Path("outputs") / "iris_mlflow_model"
 LOCAL_RUNS_DIR = Path("outputs") / "local_runs"
+USE_SCALING = False
 
 
 def train_model() -> None:
@@ -148,9 +149,10 @@ def train_model() -> None:
             X_train=X_train,
             y_train=y_train,
             random_state=random_state,
+            use_scaling=USE_SCALING,
         )
         model = search.best_estimator_
-        best_params = search.best_params_
+        best_params = normalise_best_params(search.best_params_)
         best_cv_score = float(search.best_score_)
 
         # Evaluate model performance on the held-out test data
@@ -175,6 +177,7 @@ def train_model() -> None:
         mlflow.log_param("best_min_samples_split", best_params["min_samples_split"])
         mlflow.log_param("best_min_samples_leaf", best_params["min_samples_leaf"])
         mlflow.log_param("random_state", random_state)
+        mlflow.log_param("use_scaling", USE_SCALING)
 
         # Log core evaluation metrics
         mlflow.log_metric("accuracy", results["accuracy"])
@@ -241,6 +244,7 @@ def train_model() -> None:
             "best_min_samples_leaf": best_params["min_samples_leaf"],
             "best_cv_score": best_cv_score,
             "random_state": random_state,
+            "use_scaling": USE_SCALING,
             "run_id": run.info.run_id,
         }
 

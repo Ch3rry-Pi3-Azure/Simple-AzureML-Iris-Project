@@ -1,14 +1,15 @@
 """
 Tests for model evaluation utilities used in the Iris classification demo.
 
-This module verifies that the evaluation helper returns the
-expected output structure after scoring a trained classifier.
+This module verifies that the evaluation helper returns the expected
+output structure after scoring a trained estimator. The test uses the
+shared modelling pipeline rather than a bare Random Forest so it stays
+aligned with the project's real training path.
 """
-
-from sklearn.ensemble import RandomForestClassifier
 
 from src.core.data import load_data
 from src.core.evaluate import evaluate_model
+from src.core.modeling import get_base_model
 
 
 def test_evaluate_model_returns_expected_keys() -> None:
@@ -37,12 +38,10 @@ def test_evaluate_model_returns_expected_keys() -> None:
     # Load train and test data
     X_train, X_test, y_train, y_test = load_data()
 
-    # Create and train a small test model
-    #   - A smaller model keeps the test fast
-    model = RandomForestClassifier(
-        n_estimators=10,
-        random_state=42,
-    )
+    # Create and train a small test model using the same pipeline shape
+    # used by the main training codepath.
+    model = get_base_model(random_state=42, use_scaling=False)
+    model.set_params(model__n_estimators=10)
     model.fit(X_train, y_train)
 
     # Evaluate the trained model

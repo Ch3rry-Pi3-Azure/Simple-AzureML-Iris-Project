@@ -47,6 +47,11 @@ inputs:
     type: integer
     default: 5901
 
+  # Whether the preprocessing pipeline should apply StandardScaler
+  use_scaling:
+    type: boolean
+    default: false
+
 # ------------------------------------------------
 # Outputs
 # ------------------------------------------------
@@ -86,3 +91,4 @@ command: >-
   --model-random-state ${{inputs.model_random_state}}
   --test-size ${{inputs.test_size}}
   --data-random-state ${{inputs.data_random_state}}
+  --use-scaling ${{inputs.use_scaling}}

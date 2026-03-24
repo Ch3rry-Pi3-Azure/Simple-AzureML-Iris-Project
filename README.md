@@ -39,6 +39,15 @@ This repository covers:
 
 The project trains a `RandomForestClassifier` on the Iris dataset, packages it in MLflow format, registers it in Azure ML, and deploys it to a managed online endpoint.
 
+The training path now uses a modular scikit-learn pipeline so the repo
+can act as a better template for future projects:
+
+- shared derived feature generation lives in `src/core/features.py`
+- shared preprocessing pipeline assembly lives in `src/core/preprocessing.py`
+- the model still receives the original four Iris measurements at
+  inference time, while the preprocessing pipeline expands them
+  internally before prediction
+
 There are two main ways to use the repo:
 
 - local workflow for training and artifact generation under `outputs/`
@@ -114,7 +123,9 @@ Azure-AML-Iris/
 |   |   |-- artifact_names.py
 |   |   |-- data.py
 |   |   |-- evaluate.py
+|   |   |-- features.py
 |   |   |-- modeling.py
+|   |   |-- preprocessing.py
 |   |   `-- visualize.py
 |   |-- feature_store/
 |   |   |-- __init__.py
@@ -138,6 +149,7 @@ Azure-AML-Iris/
 |-- tests/
 |   |-- test_data.py
 |   |-- test_evaluate.py
+|   |-- test_features.py
 |   `-- test_feature_store.py
 |-- .amlignore
 |-- .gitignore
@@ -150,7 +162,11 @@ Core files:
 - `src/local/train.py`
   local training entry point; saves the deployable MLflow model and local run artifacts
 - `src/core/modeling.py`
-  shared GridSearchCV logic used by both local and pipeline training
+  shared GridSearchCV and estimator assembly logic used by both local and pipeline training
+- `src/core/preprocessing.py`
+  shared scikit-learn preprocessing pipeline that generates reusable derived features and can optionally apply scaling
+- `src/core/features.py`
+  shared raw-to-derived feature engineering used by training and feature-store preparation
 - `src/core/evaluate.py`
   shared evaluation helpers for metrics, reports, and plots
 - `src/serving/score.py`
@@ -336,11 +352,17 @@ python -m src.local.train
 This:
 
 - loads and splits the Iris dataset from `data/iris.csv` when present, otherwise falls back to `sklearn.datasets.load_iris()`
-- runs `GridSearchCV` for the Random Forest
+- builds reusable derived features before fitting the estimator
+- runs `GridSearchCV` for the Random Forest pipeline
 - refits the best estimator
 - logs MLflow metrics
 - saves the deployable MLflow model to `outputs/iris_mlflow_model`
 - writes dated local artifacts under `outputs/local_runs/<YYYY-MM-DD>/<HHMMSS>_<RUN_ID>/`
+
+The local training entry point keeps scaling disabled by default
+because the current model is a Random Forest. The preprocessing logic
+is still isolated in `src/core/preprocessing.py` so future models can
+turn scaling on without rewriting the project structure.
 
 Local artifact examples:
 
@@ -505,6 +527,7 @@ Notes:
 - `src/core/data.py` now supports a pragmatic fallback chain: use an explicit CSV path when provided, otherwise use `data/iris.csv` when present, otherwise fall back to `sklearn.datasets.load_iris()`.
 - The datastore and data asset are the storage and cataloguing layer. They do not automatically change online inference in `src/serving/score.py`.
 - The Azure ML pipeline definitions now accept an optional `data_input` so training and evaluation can consume the registered data asset without breaking the fallback path.
+- The training component also exposes a `use_scaling` flag. It defaults to `false` for the current Random Forest example, but the pipeline shape is already ready for future estimators that need scaling.
 
 </details>
 
@@ -521,10 +544,11 @@ The helper script:
 2. downloads the asset from the registered datastore when present
 3. falls back to `data/iris.csv` and then to `sklearn.datasets.load_iris()` if needed
 4. derives `flower_id` and `event_timestamp`
-5. writes a feature-store-friendly source CSV locally under `outputs/feature_store/`
-6. uploads that derived file back to ADLS Gen2
-7. registers a derived Azure ML data asset such as `iris_feature_source`
-8. writes feature store scaffold YAML files locally under `featurestore/iris_demo/`
+5. materialises reusable derived features such as squared lengths, areas, and a cross-term interaction
+6. writes a feature-store-friendly source CSV locally under `outputs/feature_store/`
+7. uploads that derived file back to ADLS Gen2
+8. registers a derived Azure ML data asset such as `iris_feature_source`
+9. writes feature store scaffold YAML files locally under `featurestore/iris_demo/`
 
 Run it with defaults:
 
@@ -553,11 +577,24 @@ Generated outputs:
 - scaffold feature set YAML: `featurestore/iris_demo/iris_measurements.yml`
 - scaffold feature set spec: `featurestore/iris_demo/spec/FeatureSetSpec.yaml`
 
+The derived feature-source dataset contains:
+
+- the synthetic entity key `flower_id`
+- the synthetic retrieval timestamp `event_timestamp`
+- the four canonical raw Iris measurements
+- reusable derived features:
+  - `sepal length squared`
+  - `petal length squared`
+  - `sepal area (cm^2)`
+  - `petal area (cm^2)`
+  - `sepal length x petal length`
+
 Important scope note:
 
 - The script prepares the source data and scaffold files needed for feature store registration.
 - It does not create a managed feature store workspace for you.
 - It does not register the entity or feature set automatically because those steps target a feature store workspace rather than the regular Azure ML workspace used by this repo.
+- If the source data asset exists but Azure ML exposes it through a workspace-asset URI shape that the helper cannot download directly, the helper falls back to `data/iris.csv` instead of failing the whole workflow.
 
 </details>
 
@@ -571,7 +608,7 @@ The repo includes a component-based Azure ML pipeline in `pipelines/train_evalua
 Pipeline stages:
 
 1. `train_job`
-   trains the best model with GridSearchCV and writes `trained_model` plus training artifacts
+   trains the best model with the shared preprocessing-and-model pipeline and writes `trained_model` plus training artifacts
 2. `evaluate_job`
    reloads the model, recreates the deterministic test split, and writes evaluation artifacts
 
@@ -606,6 +643,14 @@ Control the automatic data-asset behaviour:
 ```bash
 USE_DATA_ASSET=false ./scripts/pipeline/submit.sh
 USE_DATA_ASSET=true DATA_ASSET_NAME=iris_csv DATA_ASSET_VERSION=1 ./scripts/pipeline/submit.sh
+```
+
+If you want to turn scaling on for the training pipeline template, set
+the pipeline input in `pipelines/train_evaluate.yml`:
+
+```yaml
+inputs:
+  use_scaling: true
 ```
 
 Use a specific compute target instead of serverless:

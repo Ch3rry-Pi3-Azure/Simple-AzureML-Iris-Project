@@ -4,7 +4,8 @@ Shared model-building and hyperparameter search utilities.
 This module provides a small abstraction layer over the project's
 Random Forest modelling strategy. It exists so that both the local
 training workflow and the Azure ML pipeline training step can use
-exactly the same estimator configuration and grid-search logic.
+exactly the same estimator configuration, preprocessing pipeline, and
+grid-search logic.
 """
 
 from __future__ import annotations
@@ -13,42 +14,92 @@ from typing import Any
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
+
+try:
+    from .preprocessing import build_preprocessing_pipeline
+except ImportError:
+    from preprocessing import build_preprocessing_pipeline
 
 
 # Default hyperparameter search space used by local and pipeline training.
 #   - The grid is intentionally modest because the Iris dataset is small.
 #   - This keeps the example educational and fast to run.
 DEFAULT_PARAM_GRID: dict[str, list[Any]] = {
-    "n_estimators": [50, 100, 200],
-    "max_depth": [3, 4, 5, None],
-    "min_samples_split": [2, 5],
-    "min_samples_leaf": [1, 2],
+    "model__n_estimators": [50, 100, 200],
+    "model__max_depth": [3, 4, 5, None],
+    "model__min_samples_split": [2, 5],
+    "model__min_samples_leaf": [1, 2],
 }
 
 
-def get_base_model(random_state: int = 5901) -> RandomForestClassifier:
+def get_base_model(
+    random_state: int = 5901,
+    use_scaling: bool = False,
+) -> Pipeline:
     """
-    Construct the base Random Forest classifier used in this project.
+    Construct the base modelling pipeline used in this project.
 
     Parameters
     ----------
     random_state : int, default=5901
         Seed used to make the estimator behaviour reproducible.
 
+    use_scaling : bool, default=False
+        Whether the preprocessing pipeline should apply
+        ``StandardScaler`` after generating the reusable derived
+        features.
+
     Returns
     -------
-    RandomForestClassifier
-        Unfitted scikit-learn Random Forest estimator configured
-        with the supplied random state.
+    Pipeline
+        Unfitted scikit-learn pipeline containing preprocessing and the
+        Random Forest estimator configured with the supplied random
+        state.
     """
 
-    return RandomForestClassifier(random_state=random_state)
+    return Pipeline(
+        steps=[
+            (
+                "preprocess",
+                build_preprocessing_pipeline(use_scaling=use_scaling),
+            ),
+            (
+                "model",
+                RandomForestClassifier(random_state=random_state),
+            ),
+        ]
+    )
+
+
+def normalise_best_params(best_params: dict[str, Any]) -> dict[str, Any]:
+    """
+    Strip scikit-learn pipeline prefixes from best-parameter keys.
+
+    Parameters
+    ----------
+    best_params : dict[str, Any]
+        Parameter dictionary returned by ``GridSearchCV.best_params_``.
+
+    Returns
+    -------
+    dict[str, Any]
+        Parameter dictionary with the ``model__`` prefix removed from
+        model hyperparameters so downstream logging stays compact and
+        stable.
+    """
+
+    normalized: dict[str, Any] = {}
+    for key, value in best_params.items():
+        normalized[key.removeprefix("model__")] = value
+    return normalized
 
 
 def run_grid_search(
     X_train,
     y_train,
     random_state: int = 5901,
+    use_scaling: bool = False,
     scoring: str = "accuracy",
     cv: int = 5,
     n_jobs: int = -1,
@@ -67,6 +118,10 @@ def run_grid_search(
     random_state : int, default=5901
         Seed applied to the base estimator before the hyperparameter
         search begins.
+
+    use_scaling : bool, default=False
+        Whether the shared preprocessing pipeline should apply
+        ``StandardScaler`` before the Random Forest estimator.
 
     scoring : str, default="accuracy"
         Metric used by scikit-learn to rank parameter combinations.
@@ -95,7 +150,10 @@ def run_grid_search(
     """
 
     search = GridSearchCV(
-        estimator=get_base_model(random_state=random_state),
+        estimator=get_base_model(
+            random_state=random_state,
+            use_scaling=use_scaling,
+        ),
         param_grid=DEFAULT_PARAM_GRID,
         scoring=scoring,
         cv=cv,

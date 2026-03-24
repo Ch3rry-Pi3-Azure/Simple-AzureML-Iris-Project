@@ -33,11 +33,18 @@ def test_build_feature_source_dataframe_adds_entity_and_timestamp_columns() -> N
         "sepal width (cm)",
         "petal length (cm)",
         "petal width (cm)",
+        "sepal length squared",
+        "petal length squared",
+        "sepal area (cm^2)",
+        "petal area (cm^2)",
+        "sepal length x petal length",
         "species",
     ]
     assert feature_source.loc[0, "flower_id"] == "flower_00001"
     assert feature_source.loc[1, "flower_id"] == "flower_00002"
     assert feature_source.loc[0, "event_timestamp"].endswith("Z")
+    assert feature_source.loc[0, "sepal length squared"] == 5.1**2
+    assert feature_source.loc[0, "sepal area (cm^2)"] == 5.1 * 3.5
 
 
 def test_build_abfss_uri_uses_expected_adls_format() -> None:
@@ -70,3 +77,5 @@ def test_render_feature_set_spec_yaml_points_to_timestamped_source() -> None:
     assert "event_timestamp" in yaml_text
     assert "flower_id" in yaml_text
     assert "sepal length (cm)" in yaml_text
+    assert "sepal length squared" in yaml_text
+    assert "sepal area (cm^2)" in yaml_text

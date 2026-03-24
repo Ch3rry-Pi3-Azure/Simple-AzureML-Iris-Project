@@ -37,7 +37,7 @@ try:
     )
     from ..core.data import load_data
     from ..core.evaluate import evaluate_model
-    from ..core.modeling import run_grid_search
+    from ..core.modeling import normalise_best_params, run_grid_search
     from ..core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -62,7 +62,7 @@ except ImportError:
     )
     from core.data import load_data
     from core.evaluate import evaluate_model
-    from core.modeling import run_grid_search
+    from core.modeling import normalise_best_params, run_grid_search
     from core.visualize import (
         save_classification_report_heatmap,
         save_confusion_matrix_plot,
@@ -83,6 +83,38 @@ def parse_args() -> argparse.Namespace:
         and dataset split controls used by the training step.
     """
 
+    def parse_bool_argument(value: str | bool) -> bool:
+        """
+        Parse a CLI boolean value passed as text.
+
+        Parameters
+        ----------
+        value : str | bool
+            Command-line value supplied to the flag.
+
+        Returns
+        -------
+        bool
+            Parsed boolean value.
+
+        Raises
+        ------
+        argparse.ArgumentTypeError
+            Raised when the value cannot be interpreted as a boolean.
+        """
+
+        if isinstance(value, bool):
+            return value
+
+        normalized_value = value.strip().lower()
+        if normalized_value in {"true", "1", "yes", "y"}:
+            return True
+        if normalized_value in {"false", "0", "no", "n"}:
+            return False
+        raise argparse.ArgumentTypeError(
+            "Boolean arguments must be one of: true, false, 1, 0, yes, no."
+        )
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-output", required=True)
     parser.add_argument("--metrics-output", required=True)
@@ -90,6 +122,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-random-state", type=int, default=5901)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--data-random-state", type=int, default=5901)
+    parser.add_argument("--use-scaling", type=parse_bool_argument, default=False)
     return parser.parse_args()
 
 
@@ -134,13 +167,14 @@ def main() -> None:
         X_train=X_train,
         y_train=y_train,
         random_state=args.model_random_state,
+        use_scaling=args.use_scaling,
     )
     model = search.best_estimator_
 
     results = evaluate_model(model, X_test, y_test)
     predictions = results["predictions"]
     probabilities = model.predict_proba(X_test)
-    best_params = search.best_params_
+    best_params = normalise_best_params(search.best_params_)
     best_cv_score = float(search.best_score_)
 
     # Collect structured metrics for JSON export and UI logging.
@@ -170,6 +204,7 @@ def main() -> None:
         "test_size": args.test_size,
         "data_random_state": args.data_random_state,
         "data_input": args.data_input or "builtin_or_default",
+        "use_scaling": args.use_scaling,
     }
 
     # Log summary parameters and scalar metrics so Azure ML surfaces them.
@@ -184,6 +219,7 @@ def main() -> None:
             "test_size": args.test_size,
             "data_random_state": args.data_random_state,
             "data_input": args.data_input or "builtin_or_default",
+            "use_scaling": args.use_scaling,
         }
     )
     mlflow.log_metrics(

@@ -26,6 +26,11 @@ from sklearn.metrics import ConfusionMatrixDisplay, auc, roc_curve
 from sklearn.model_selection import learning_curve
 from sklearn.preprocessing import label_binarize
 
+try:
+    from .features import build_model_feature_frame
+except ImportError:
+    from features import build_model_feature_frame
+
 
 # Canonical human-readable class names used in plots.
 CLASS_NAMES = ["setosa", "versicolor", "virginica"]
@@ -292,6 +297,10 @@ def save_oob_error_curve(
     -----
     - This plot is a better Random Forest training-progress analogue
       than a traditional loss-vs-iteration curve.
+
+    - The curve is fitted on the same reusable derived feature matrix
+      that the training pipeline builds before handing data to the
+      Random Forest estimator.
     """
 
     target_n_estimators = int(best_params["n_estimators"])
@@ -313,10 +322,11 @@ def save_oob_error_curve(
     )
 
     oob_errors = []
+    feature_matrix = build_model_feature_frame(X)
 
     for n_estimators in estimator_steps:
         forest.set_params(n_estimators=n_estimators)
-        forest.fit(X, y)
+        forest.fit(feature_matrix, y)
         oob_errors.append(1 - forest.oob_score_)
 
     fig, ax = plt.subplots(figsize=(7, 5))
