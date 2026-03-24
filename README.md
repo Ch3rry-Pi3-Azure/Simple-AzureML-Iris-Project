@@ -74,13 +74,13 @@ Main project workflow:
 
 ```mermaid
 flowchart LR
-    A[Raw Iris Source<br/>Azure ML data asset or local CSV or load_iris()] --> B[Shared Data Loading<br/>src/core/data.py]
-    B --> C[Shared Feature Engineering<br/>src/core/features.py]
-    C --> D[Training Pipeline<br/>src/core/preprocessing.py + src/core/modeling.py]
+    A["Raw Iris Source: Azure ML data asset, local CSV, or load_iris()"] --> B["Shared Data Loading: src/core/data.py"]
+    B --> C["Shared Feature Engineering: src/core/features.py"]
+    C --> D["Training Pipeline: src/core/preprocessing.py + src/core/modeling.py"]
     D --> E[MLflow Model Artifact]
     E --> F[Azure ML Model Registration]
     F --> G[Managed Online Deployment]
-    G --> H[Endpoint Requests<br/>src/serving/score.py]
+    G --> H["Endpoint Requests: src/serving/score.py"]
     H --> I[Collected Inputs / Outputs]
     I --> J[Azure ML Monitoring]
 ```
@@ -89,11 +89,11 @@ Feature-store preparation workflow:
 
 ```mermaid
 flowchart LR
-    A[iris_csv data asset<br/>or local fallback] --> B[src/feature_store/prepare_source.py]
-    B --> C[Derived reusable features<br/>flower_id, event_timestamp,<br/>squared terms, areas, interaction]
+    A["iris_csv data asset or local fallback"] --> B["src/feature_store/prepare_source.py"]
+    B --> C["Derived reusable features: flower_id, event_timestamp, squared terms, areas, interaction"]
     C --> D[Derived CSV in ADLS]
     D --> E[iris_feature_source data asset]
-    E --> F[Feature store scaffold YAML<br/>entity + feature set + spec]
+    E --> F["Feature store scaffold YAML: entity + feature set + spec"]
 ```
 
 </details>
