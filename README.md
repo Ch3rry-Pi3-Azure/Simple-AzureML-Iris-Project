@@ -16,6 +16,7 @@ This repository covers:
 ## Table Of Contents
 
 - [Overview](#overview)
+- [Workflow Diagrams](#workflow-diagrams)
 - [Repository Structure](#repository-structure)
 - [Azure Prerequisites](#azure-prerequisites)
 - [Windows Azure CLI Setup](#windows-azure-cli-setup)
@@ -61,6 +62,39 @@ At inference time, Azure ML:
 3. mounts the registered MLflow model inside the container
 4. calls `src/serving/score.py` to load the model and serve predictions
 5. collects production input/output data for monitoring
+
+</details>
+
+## Workflow Diagrams
+
+<details open>
+<summary>Show or hide section</summary>
+
+Main project workflow:
+
+```mermaid
+flowchart LR
+    A[Raw Iris Source<br/>Azure ML data asset or local CSV or load_iris()] --> B[Shared Data Loading<br/>src/core/data.py]
+    B --> C[Shared Feature Engineering<br/>src/core/features.py]
+    C --> D[Training Pipeline<br/>src/core/preprocessing.py + src/core/modeling.py]
+    D --> E[MLflow Model Artifact]
+    E --> F[Azure ML Model Registration]
+    F --> G[Managed Online Deployment]
+    G --> H[Endpoint Requests<br/>src/serving/score.py]
+    H --> I[Collected Inputs / Outputs]
+    I --> J[Azure ML Monitoring]
+```
+
+Feature-store preparation workflow:
+
+```mermaid
+flowchart LR
+    A[iris_csv data asset<br/>or local fallback] --> B[src/feature_store/prepare_source.py]
+    B --> C[Derived reusable features<br/>flower_id, event_timestamp,<br/>squared terms, areas, interaction]
+    C --> D[Derived CSV in ADLS]
+    D --> E[iris_feature_source data asset]
+    E --> F[Feature store scaffold YAML<br/>entity + feature set + spec]
+```
 
 </details>
 
