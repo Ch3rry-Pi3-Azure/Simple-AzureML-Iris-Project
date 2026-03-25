@@ -1,0 +1,11 @@
+$schema: http://azureml/sdk-2-0/FeatureStoreEntity.json
+name: flower
+version: "1"
+description: Iris flower entity keyed by flower_id.
+stage: Development
+index_columns:
+  - name: flower_id
+    type: string
+tags:
+  project: azure-aml-iris
+  source: derived-feature-source

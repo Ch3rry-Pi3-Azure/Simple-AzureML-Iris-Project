@@ -1,0 +1,29 @@
+$schema: http://azureml/sdk-2-0/FeatureSetSpec.json
+source:
+  type: csv
+  path: abfss://irisfs@azuremlirishp01.dfs.core.windows.net/feature-store/source/iris_feature_source.csv
+  timestamp_column:
+    name: event_timestamp
+    format: yyyy-MM-dd'T'HH:mm:ss'Z'
+features:
+  - name: sepal length (cm)
+    type: double
+  - name: sepal width (cm)
+    type: double
+  - name: petal length (cm)
+    type: double
+  - name: petal width (cm)
+    type: double
+  - name: sepal length squared
+    type: double
+  - name: petal length squared
+    type: double
+  - name: sepal area (cm^2)
+    type: double
+  - name: petal area (cm^2)
+    type: double
+  - name: sepal length x petal length
+    type: double
+index_columns:
+  - name: flower_id
+    type: string

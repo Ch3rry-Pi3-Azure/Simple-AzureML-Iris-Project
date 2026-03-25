@@ -1,0 +1,12 @@
+$schema: http://azureml/sdk-2-0/Featureset.json
+name: iris_measurements
+version: "1"
+description: Canonical Iris measurements plus reusable derived features sourced from ADLS Gen2.
+specification:
+  path: ./spec
+entities:
+  - azureml:flower:1
+stage: Development
+tags:
+  project: azure-aml-iris
+  source: derived-feature-source
